@@ -94,22 +94,16 @@ describe('execute', () => {
     if (process.platform !== 'win32') return;
 
     const testDir = mkdtempSync(join(tmpdir(), 'counselors-cmd-wrapper-'));
-    const scriptPath = join(testDir, 'echo-args.js');
+    const scriptPath = join(testDir, 'emit-ok.js');
     const cmdPath = join(testDir, 'echo-arg.cmd');
+    const markerPath = join(testDir, 'injected.txt');
 
     try {
-      writeFileSync(
-        scriptPath,
-        'process.stdout.write(process.argv.slice(2).join(" "))',
-        'utf-8',
-      );
-      writeFileSync(
-        cmdPath,
-        '@echo off\r\nnode "%~dp0echo-args.js" %*\r\n',
-        'utf-8',
-      );
+      writeFileSync(scriptPath, 'process.stdout.write("OK")', 'utf-8');
+      writeFileSync(cmdPath, '@echo off\r\nnode "%~dp0emit-ok.js"\r\n', 'utf-8');
 
-      const literal = 'hello & world | test > output';
+      // If metacharacters are interpreted by cmd.exe, this creates markerPath.
+      const literal = `hello & type nul > "${markerPath}"`;
       const result = await execute(
         {
           cmd: cmdPath,
@@ -120,8 +114,8 @@ describe('execute', () => {
       );
 
       expect(result.exitCode).toBe(0);
-      const normalized = result.stdout.trim().replace(/^"(.*)"$/, '$1');
-      expect(normalized).toBe(literal);
+      expect(result.stdout).toBe('OK');
+      expect(existsSync(markerPath)).toBe(false);
     } finally {
       rmSync(testDir, { recursive: true, force: true });
     }
