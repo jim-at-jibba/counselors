@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -88,6 +88,42 @@ describe('execute', () => {
     );
 
     expect(result.stdout).toBe(literal);
+  });
+
+  it('passes shell metacharacters literally through windows .cmd wrappers', async () => {
+    if (process.platform !== 'win32') return;
+
+    const testDir = mkdtempSync(join(tmpdir(), 'counselors-cmd-wrapper-'));
+    const scriptPath = join(testDir, 'echo-arg.js');
+    const cmdPath = join(testDir, 'echo-arg.cmd');
+
+    try {
+      writeFileSync(
+        scriptPath,
+        'process.stdout.write(process.argv[2] || "")',
+        'utf-8',
+      );
+      writeFileSync(
+        cmdPath,
+        '@echo off\r\nnode "%~dp0echo-arg.js" "%~1"\r\n',
+        'utf-8',
+      );
+
+      const literal = 'hello & world | test > output';
+      const result = await execute(
+        {
+          cmd: cmdPath,
+          args: [literal],
+          cwd: testDir,
+        },
+        5000,
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toBe(literal);
+    } finally {
+      rmSync(testDir, { recursive: true, force: true });
+    }
   });
 
   it('handles missing binary', async () => {

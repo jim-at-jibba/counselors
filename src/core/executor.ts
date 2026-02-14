@@ -14,6 +14,7 @@ import type {
 import { debug } from '../ui/logger.js';
 
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10MB
+const WINDOWS_TASKKILL_TIMEOUT_MS = 1500;
 
 const activeChildren = new Set<ChildProcess>();
 
@@ -22,10 +23,16 @@ function killProcessGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   if (process.platform === 'win32') {
     try {
       if (child.pid) {
+        const taskkillArgs = ['/PID', String(child.pid), '/T'];
+        if (signal === 'SIGKILL') {
+          taskkillArgs.push('/F');
+        }
+
         // Windows has no POSIX process groups; kill the full process tree.
-        execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+        execFileSync('taskkill', taskkillArgs, {
           stdio: 'ignore',
           windowsHide: true,
+          timeout: WINDOWS_TASKKILL_TIMEOUT_MS,
         });
         return;
       }
