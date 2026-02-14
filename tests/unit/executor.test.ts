@@ -8,8 +8,8 @@ describe('execute', () => {
   it('captures stdout', async () => {
     const result = await execute(
       {
-        cmd: 'echo',
-        args: ['hello world'],
+        cmd: 'node',
+        args: ['-e', 'process.stdout.write("hello world")'],
         cwd: process.cwd(),
       },
       5000,
@@ -49,8 +49,8 @@ describe('execute', () => {
   it('times out and kills', async () => {
     const result = await execute(
       {
-        cmd: 'sleep',
-        args: ['60'],
+        cmd: 'node',
+        args: ['-e', 'setInterval(() => {}, 1000)'],
         cwd: process.cwd(),
       },
       500,
@@ -74,6 +74,20 @@ describe('execute', () => {
     );
 
     expect(result.stdout).toBe('hello from stdin');
+  });
+
+  it('passes shell metacharacters as literal arguments', async () => {
+    const literal = 'hello & world | test > output';
+    const result = await execute(
+      {
+        cmd: 'node',
+        args: ['-e', 'process.stdout.write(process.argv[1])', literal],
+        cwd: process.cwd(),
+      },
+      5000,
+    );
+
+    expect(result.stdout).toBe(literal);
   });
 
   it('handles missing binary', async () => {
