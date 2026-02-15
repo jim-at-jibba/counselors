@@ -75,6 +75,10 @@ export function registerRunCommand(program: Command): void {
     .option('-f, --file <path>', 'Use a pre-built prompt file (no wrapping)')
     .option('-t, --tools <tools>', 'Comma-separated list of tools to use')
     .option(
+      '-g, --group <groups>',
+      'Comma-separated group name(s) to run (expands to tool IDs)',
+    )
+    .option(
       '--context <paths>',
       'Gather context from paths (comma-separated, or "." for git diff)',
     )
@@ -88,6 +92,7 @@ export function registerRunCommand(program: Command): void {
         opts: {
           file?: string;
           tools?: string;
+          group?: string;
           context?: string;
           readOnly?: string;
           dryRun?: boolean;
@@ -102,19 +107,57 @@ export function registerRunCommand(program: Command): void {
 
         // Determine tools to use
         let toolIds: string[];
-        const explicitTools = Boolean(opts.tools);
+        const groupNames = opts.group
+          ? opts.group
+              .split(',')
+              .map((g) => g.trim())
+              .filter(Boolean)
+          : [];
+        const explicitSelection = Boolean(opts.tools || groupNames.length > 0);
 
-        if (opts.tools) {
-          toolIds = opts.tools
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean);
-        } else {
-          toolIds = Object.keys(config.tools);
+        const groupToolIds: string[] = [];
+        if (groupNames.length > 0) {
+          for (const groupName of groupNames) {
+            const ids = config.groups[groupName];
+            if (!ids) {
+              error(
+                `Group "${groupName}" is not configured. Run "counselors groups list".`,
+              );
+              process.exitCode = 1;
+              return;
+            }
+
+            for (const id of ids) {
+              if (!config.tools[id]) {
+                error(
+                  `Group "${groupName}" references tool "${id}", but it is not configured.`,
+                );
+                process.exitCode = 1;
+                return;
+              }
+            }
+
+            groupToolIds.push(...ids);
+          }
         }
 
+        const explicitToolIds = opts.tools
+          ? opts.tools
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : [];
+
+        toolIds = explicitSelection
+          ? [...groupToolIds, ...explicitToolIds]
+          : Object.keys(config.tools);
+
         if (toolIds.length === 0) {
-          error('No tools configured. Run "counselors init" first.');
+          if (Object.keys(config.tools).length === 0) {
+            error('No tools configured. Run "counselors init" first.');
+          } else {
+            error('No tools selected.');
+          }
           process.exitCode = 1;
           return;
         }
@@ -132,7 +175,7 @@ export function registerRunCommand(program: Command): void {
 
         // Interactive tool selection when no --tools flag and TTY
         if (
-          !explicitTools &&
+          !explicitSelection &&
           !opts.dryRun &&
           process.stderr.isTTY &&
           toolIds.length > 1

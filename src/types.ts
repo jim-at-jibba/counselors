@@ -35,6 +35,7 @@ export const ConfigSchema = z.object({
     })
     .default({}),
   tools: z.record(z.string(), ToolConfigSchema).default({}),
+  groups: z.record(z.string(), z.array(z.string())).default({}),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

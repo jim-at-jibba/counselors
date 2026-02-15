@@ -32,6 +32,7 @@ const DEFAULT_CONFIG: Config = {
     maxParallel: 4,
   },
   tools: {},
+  groups: {},
 };
 
 export function loadConfig(globalPath?: string): Config {
@@ -90,6 +91,7 @@ export function mergeConfigs(
     version: 1,
     defaults: { ...global.defaults },
     tools: { ...global.tools },
+    groups: { ...global.groups },
   };
 
   if (project) {
@@ -134,7 +136,16 @@ export function addToolToConfig(
 export function removeToolFromConfig(config: Config, id: string): Config {
   const tools = { ...config.tools };
   delete tools[id];
-  return { ...config, tools };
+
+  // Remove references from any groups.
+  const groups = Object.fromEntries(
+    Object.entries(config.groups).map(([name, toolIds]) => [
+      name,
+      toolIds.filter((t) => t !== id),
+    ]),
+  );
+
+  return { ...config, tools, groups };
 }
 
 export function renameToolInConfig(
@@ -145,9 +156,38 @@ export function renameToolInConfig(
   const tools = { ...config.tools };
   tools[newId] = tools[oldId];
   delete tools[oldId];
-  return { ...config, tools };
+
+  const groups = Object.fromEntries(
+    Object.entries(config.groups).map(([name, toolIds]) => [
+      name,
+      toolIds.map((t) => (t === oldId ? newId : t)),
+    ]),
+  );
+
+  return { ...config, tools, groups };
 }
 
 export function getConfiguredTools(config: Config): string[] {
   return Object.keys(config.tools);
+}
+
+export function addGroupToConfig(
+  config: Config,
+  name: string,
+  toolIds: string[],
+): Config {
+  return {
+    ...config,
+    groups: { ...config.groups, [name]: [...toolIds] },
+  };
+}
+
+export function removeGroupFromConfig(config: Config, name: string): Config {
+  const groups = { ...config.groups };
+  delete groups[name];
+  return { ...config, groups };
+}
+
+export function getConfiguredGroups(config: Config): string[] {
+  return Object.keys(config.groups);
 }

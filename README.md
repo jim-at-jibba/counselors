@@ -85,6 +85,7 @@ counselors run -t claude-opus,claude-opus,claude-opus "Review this"  # Run the s
 |------|-------------|
 | `-f, --file <path>` | Use a prompt file (no wrapping) |
 | `-t, --tools <list>` | Comma-separated tool IDs |
+| `-g, --group <names>` | Comma-separated group name(s) (expands to tool IDs) |
 | `--context <paths>` | Gather context from paths (comma-separated, or `.` for git diff) |
 | `--read-only <level>` | `strict`, `best-effort`, `off` (defaults to config `readOnly`) |
 | `--dry-run` | Show what would run without executing |
@@ -138,6 +139,16 @@ Manage configured tools.
 | `tools rename <old> <new>` | Rename a tool ID |
 | `tools list` / `ls` | List configured tools (`-v` for full config) |
 | `tools test [tools...]` | Test tools with a quick "reply OK" prompt |
+
+### `groups`
+
+Manage predefined groups of tool IDs for easier reuse.
+
+```bash
+counselors groups list
+counselors groups add smart --tools claude-opus,codex-5.3-high
+counselors groups remove smart
+```
 
 ### `agent`
 

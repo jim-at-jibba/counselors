@@ -1,5 +1,11 @@
 import { execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -28,6 +34,7 @@ describe('CLI', () => {
     expect(output).toContain('init');
     expect(output).toContain('upgrade');
     expect(output).toContain('tools');
+    expect(output).toContain('groups');
   });
 
   it('shows version', () => {
@@ -66,6 +73,7 @@ describe('CLI', () => {
     const output = run('run --help');
     expect(output).toContain('--file');
     expect(output).toContain('--tools');
+    expect(output).toContain('--group');
     expect(output).toContain('--dry-run');
     expect(output).toContain('--read-only');
   });
@@ -162,6 +170,102 @@ describe('CLI', () => {
     expect(output).toContain('Setup & Skill Installation');
     expect(output).toContain('counselors init');
     expect(output).toContain('counselors skill');
+  });
+
+  it('groups add/list/remove works', () => {
+    const xdg = mkdtempSync(join(tmpdir(), 'counselors-test-'));
+    try {
+      const configDir = join(xdg, 'counselors');
+      mkdirSync(configDir, { recursive: true });
+      const configPath = join(configDir, 'config.json');
+      writeFileSync(
+        configPath,
+        `${JSON.stringify(
+          {
+            version: 1,
+            defaults: {
+              timeout: 540,
+              outputDir: './agents/counselors',
+              readOnly: 'bestEffort',
+              maxContextKb: 50,
+              maxParallel: 4,
+            },
+            tools: {
+              claude: {
+                binary: '/usr/bin/claude',
+                adapter: 'claude',
+                readOnly: { level: 'enforced' },
+              },
+            },
+            groups: {},
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      run('groups add smart --tools claude', { env: { XDG_CONFIG_HOME: xdg } });
+
+      const listOutput = run('groups list', { env: { XDG_CONFIG_HOME: xdg } });
+      expect(listOutput).toContain('smart');
+      expect(listOutput).toContain('claude');
+
+      const saved = JSON.parse(readFileSync(configPath, 'utf-8'));
+      expect(saved.groups.smart).toEqual(['claude']);
+
+      run('groups remove smart', { env: { XDG_CONFIG_HOME: xdg } });
+      const savedAfter = JSON.parse(readFileSync(configPath, 'utf-8'));
+      expect(savedAfter.groups.smart).toBeUndefined();
+    } finally {
+      rmSync(xdg, { recursive: true, force: true });
+    }
+  });
+
+  it('run --dry-run supports --group expansion', () => {
+    const xdg = mkdtempSync(join(tmpdir(), 'counselors-test-'));
+    try {
+      const configDir = join(xdg, 'counselors');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(
+        join(configDir, 'config.json'),
+        `${JSON.stringify(
+          {
+            version: 1,
+            defaults: {
+              timeout: 540,
+              outputDir: './agents/counselors',
+              readOnly: 'bestEffort',
+              maxContextKb: 50,
+              maxParallel: 4,
+            },
+            tools: {
+              claude: {
+                binary: '/usr/bin/claude',
+                adapter: 'claude',
+                readOnly: { level: 'enforced' },
+              },
+              codex: {
+                binary: '/usr/bin/codex',
+                adapter: 'codex',
+                readOnly: { level: 'enforced' },
+              },
+            },
+            groups: { smart: ['claude', 'codex'] },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      const output = run('run --dry-run --group smart "test"', {
+        env: { XDG_CONFIG_HOME: xdg },
+      });
+
+      expect(output).toContain('claude');
+      expect(output).toContain('codex');
+    } finally {
+      rmSync(xdg, { recursive: true, force: true });
+    }
   });
 
   it('ls is alias for tools list', () => {

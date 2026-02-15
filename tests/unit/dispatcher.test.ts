@@ -40,6 +40,7 @@ function makeConfig(tools: Config['tools']): Config {
       maxParallel: 4,
     },
     tools,
+    groups: {},
   };
 }
 
