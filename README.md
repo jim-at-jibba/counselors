@@ -8,6 +8,12 @@ Fan out prompts to multiple AI coding agents in parallel.
 
 No MCP servers, no API keys, no complex configuration. It just calls your locally installed CLI tools.
 
+## Will this get me banned from my provider?
+
+Counselors only uses providers' **first-party CLI tools**. It does not call provider APIs directly, it does not extract or reuse auth tokens, and it does not do anything "tricky" behind the scenes. It literally runs the official CLI binaries you already installed, the same way you would from your terminal.
+
+You are still subject to each provider's terms and rate limits. Counselors is just an orchestrator around the CLIs.
+
 ## Agentic quickstart
 
 Install the CLI yourself first (pick one):
