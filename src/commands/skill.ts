@@ -54,12 +54,13 @@ Be selective — don't dump the entire codebase. Pick the most relevant code sec
 
    **If more than 4 agents**: AskUserQuestion only supports 4 options. Use these fixed options:
    - Option 1: "All [N] agents" — sends to every configured agent
-   - Option 2-4: The first 3 individual agents by ID
-   - The user can always select "Other" to type a comma-separated list of agent IDs from the printed list above
+	   - Option 2-4: The first 3 individual agents by ID
+	   - The user can always select "Other" to type a comma-separated list of agent IDs from the printed list above
 
-   If groups exist, you MAY offer group options (e.g. "Group: smart"), but you MUST expand them to the underlying tool IDs and confirm that expanded list with the user before dispatch. This avoids silently omitting or adding agents.
+	   If groups exist, you MAY offer group options (e.g. "Group: smart"), but you MUST expand them to the underlying tool IDs and confirm that expanded list with the user before dispatch. This avoids silently omitting or adding agents.
+	   If the user says something like "use the smart group", you MUST look up that group in the configured groups list (\`counselors groups ls\`). If it exists, use it (via \`--group smart\` or by expanding to tool IDs) and confirm the expanded tool list before dispatch. If it does not exist, tell the user and ask them to choose again — do not guess.
 
-3. Wait for the user's selection before proceeding.
+	3. Wait for the user's selection before proceeding.
 
 4. **MANDATORY: Confirm the selection before continuing.** After the user picks agents, echo back the exact list you will dispatch to:
 
