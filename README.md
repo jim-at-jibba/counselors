@@ -207,44 +207,19 @@ Print a `/counselors` slash-command template for use inside Claude Code or other
       "readOnly": { "level": "enforced" },
       "extraFlags": ["--model", "opus"]
     }
+  },
+  "groups": {
+    "smart": ["claude"]
   }
 }
 ```
 
-### Multiple instances of the same model
+### Running the same tool multiple times
 
-The tool ID (the key in `tools`) is just a name — it doesn't have to match the adapter. Use the `adapter` field to specify which built-in adapter to use. This lets you dispatch to the same model multiple times in a single run, getting independent perspectives from parallel instances.
-
-```jsonc
-{
-  "version": 1,
-  "tools": {
-    "opus-1": {
-      "binary": "/usr/local/bin/claude",
-      "adapter": "claude",
-      "readOnly": { "level": "enforced" },
-      "extraFlags": ["--model", "opus"]
-    },
-    "opus-2": {
-      "binary": "/usr/local/bin/claude",
-      "adapter": "claude",
-      "readOnly": { "level": "enforced" },
-      "extraFlags": ["--model", "opus"]
-    },
-    "opus-3": {
-      "binary": "/usr/local/bin/claude",
-      "adapter": "claude",
-      "readOnly": { "level": "enforced" },
-      "extraFlags": ["--model", "opus"]
-    }
-  }
-}
-```
-
-Each instance runs independently in parallel and writes to its own output file (`opus-1.md`, `opus-2.md`, `opus-3.md`). You can mix and match — add instances of different models too, or target specific ones with `-t`:
+If you want multiple independent responses from the same configured tool, just repeat it in `--tools` (or inside a group). Counselors will automatically fan it out as separate instances.
 
 ```bash
-counselors run -t opus-1,opus-2 "Review this module for edge cases"
+counselors run -t opus,opus,opus "Review this module for edge cases"
 ```
 
 ### Project config
