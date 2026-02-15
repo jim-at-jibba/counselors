@@ -73,6 +73,28 @@ describe('loadConfig', () => {
     expect(config.groups.smart).toEqual(['claude']);
   });
 
+  it('defaults groups when missing from config file', () => {
+    const legacyConfig = {
+      version: 1,
+      defaults: {
+        timeout: 300,
+        outputDir: './out',
+        readOnly: 'enforced',
+        maxContextKb: 100,
+        maxParallel: 2,
+      },
+      tools: {
+        claude: {
+          binary: '/usr/bin/claude',
+          readOnly: { level: 'enforced' },
+        },
+      },
+    };
+    writeFileSync(testConfigFile, JSON.stringify(legacyConfig));
+    const config = loadConfig(testConfigFile);
+    expect(config.groups).toEqual({});
+  });
+
   it('throws on invalid config', () => {
     writeFileSync(testConfigFile, JSON.stringify({ version: 2 }));
     expect(() => loadConfig(testConfigFile)).toThrow();
