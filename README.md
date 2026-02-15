@@ -78,6 +78,7 @@ counselors run "Your prompt here"
 counselors run -f prompt.md              # Use a prompt file
 echo "prompt" | counselors run           # Read from stdin
 counselors run --dry-run "Show plan"     # Preview without executing
+counselors run -t claude-opus,claude-opus,claude-opus "Review this"  # Run the same tool multiple times
 ```
 
 | Flag | Description |

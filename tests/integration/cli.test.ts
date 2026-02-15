@@ -1,5 +1,7 @@
 import { execSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const CLI = resolve(import.meta.dirname, '../../dist/cli.js');
@@ -66,6 +68,93 @@ describe('CLI', () => {
     expect(output).toContain('--tools');
     expect(output).toContain('--dry-run');
     expect(output).toContain('--read-only');
+  });
+
+  it('run --dry-run supports running the same tool multiple times', () => {
+    const xdg = mkdtempSync(join(tmpdir(), 'counselors-test-'));
+    try {
+      const configDir = join(xdg, 'counselors');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(
+        join(configDir, 'config.json'),
+        `${JSON.stringify(
+          {
+            version: 1,
+            defaults: {
+              timeout: 540,
+              outputDir: './agents/counselors',
+              readOnly: 'bestEffort',
+              maxContextKb: 50,
+              maxParallel: 4,
+            },
+            tools: {
+              claude: {
+                binary: '/usr/bin/claude',
+                adapter: 'claude',
+                readOnly: { level: 'enforced' },
+              },
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      const output = run('run --dry-run -t claude,claude,claude "test"', {
+        env: { XDG_CONFIG_HOME: xdg },
+      });
+
+      expect(output).toContain('claude');
+      expect(output).toContain('claude__2');
+      expect(output).toContain('claude__3');
+      expect(output.split('$ /usr/bin/claude').length - 1).toBe(3);
+    } finally {
+      rmSync(xdg, { recursive: true, force: true });
+    }
+  });
+
+  it('run --dry-run repeats built-in tools even when adapter is omitted', () => {
+    const xdg = mkdtempSync(join(tmpdir(), 'counselors-test-'));
+    try {
+      const configDir = join(xdg, 'counselors');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(
+        join(configDir, 'config.json'),
+        `${JSON.stringify(
+          {
+            version: 1,
+            defaults: {
+              timeout: 540,
+              outputDir: './agents/counselors',
+              readOnly: 'bestEffort',
+              maxContextKb: 50,
+              maxParallel: 4,
+            },
+            tools: {
+              // Intentionally omit `adapter` to simulate a minimal/manual config.
+              claude: {
+                binary: '/usr/bin/claude',
+                readOnly: { level: 'enforced' },
+              },
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      const output = run('run --dry-run -t claude,claude "test"', {
+        env: { XDG_CONFIG_HOME: xdg },
+      });
+
+      const lines = output.split('\n');
+      const idx = lines.findIndex((l) => l.trim() === 'claude__2');
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(lines[idx + 1]).toContain('$ /usr/bin/claude');
+      expect(lines[idx + 1]).toContain('--output-format text');
+    } finally {
+      rmSync(xdg, { recursive: true, force: true });
+    }
   });
 
   it('agent command prints instructions', () => {

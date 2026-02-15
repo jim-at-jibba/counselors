@@ -1,7 +1,7 @@
 import { copyFileSync, readFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import type { Command } from 'commander';
-import { resolveAdapter } from '../adapters/index.js';
+import { isBuiltInTool, resolveAdapter } from '../adapters/index.js';
 import { loadConfig, loadProjectConfig, mergeConfigs } from '../core/config.js';
 import { gatherContext } from '../core/context.js';
 import { dispatch } from '../core/dispatcher.js';
@@ -13,11 +13,60 @@ import {
   resolveOutputDir,
 } from '../core/prompt-builder.js';
 import { synthesize } from '../core/synthesis.js';
-import type { ReadOnlyLevel, RunManifest, ToolReport } from '../types.js';
+import type {
+  Config,
+  ReadOnlyLevel,
+  RunManifest,
+  ToolReport,
+} from '../types.js';
 import { error, info } from '../ui/logger.js';
 import { formatDryRun, formatRunSummary } from '../ui/output.js';
 import { ProgressDisplay } from '../ui/progress.js';
 import { selectRunTools } from '../ui/prompts.js';
+
+function expandDuplicateToolIds(
+  toolIds: string[],
+  config: Config,
+): { toolIds: string[]; config: Config } {
+  const used = new Set(Object.keys(config.tools));
+  const nextSuffix: Record<string, number> = {};
+  let expandedTools: Config['tools'] | null = null;
+
+  const expanded: string[] = [];
+  for (const id of toolIds) {
+    const next = nextSuffix[id] ?? 1;
+    if (next === 1) {
+      nextSuffix[id] = 2;
+      expanded.push(id);
+      continue;
+    }
+
+    let suffix = next;
+    let candidate = `${id}__${suffix}`;
+    while (used.has(candidate)) {
+      suffix++;
+      candidate = `${id}__${suffix}`;
+    }
+    nextSuffix[id] = suffix + 1;
+
+    if (!expandedTools) expandedTools = { ...config.tools };
+
+    const baseConfig = config.tools[id];
+    // Base tool existence is validated earlier; this is a defensive fallback.
+    if (baseConfig) {
+      const needsAdapter = !baseConfig.adapter && isBuiltInTool(id);
+      expandedTools[candidate] = needsAdapter
+        ? { ...baseConfig, adapter: id }
+        : baseConfig;
+    }
+
+    used.add(candidate);
+    expanded.push(candidate);
+  }
+
+  if (!expandedTools) return { toolIds, config };
+  return { toolIds: expanded, config: { ...config, tools: expandedTools } };
+}
 
 export function registerRunCommand(program: Command): void {
   program
@@ -49,14 +98,17 @@ export function registerRunCommand(program: Command): void {
         const cwd = process.cwd();
         const globalConfig = loadConfig();
         const projectConfig = loadProjectConfig(cwd);
-        const config = mergeConfigs(globalConfig, projectConfig);
+        let config = mergeConfigs(globalConfig, projectConfig);
 
         // Determine tools to use
         let toolIds: string[];
         const explicitTools = Boolean(opts.tools);
 
         if (opts.tools) {
-          toolIds = opts.tools.split(',').map((t) => t.trim());
+          toolIds = opts.tools
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
         } else {
           toolIds = Object.keys(config.tools);
         }
@@ -92,6 +144,14 @@ export function registerRunCommand(program: Command): void {
             return;
           }
           toolIds = selected;
+        }
+
+        // Allow running the same configured tool multiple times by repeating it.
+        // Example: --tools claude-opus,claude-opus,claude-opus
+        {
+          const expanded = expandDuplicateToolIds(toolIds, config);
+          toolIds = expanded.toolIds;
+          config = expanded.config;
         }
 
         // Map read-only flag (fall back to config default)
