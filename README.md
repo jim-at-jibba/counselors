@@ -6,7 +6,7 @@ Fan out prompts to multiple AI coding agents in parallel.
 
 `counselors` dispatches the same prompt to Claude, Codex, Gemini, Amp, or custom tools simultaneously, collects their responses, and writes everything to a structured output directory.
 
-No MCP servers, no API keys, no complex configuration. It just calls your locally installed CLI tools.
+No MCP servers, no direct API integrations, no complex configuration. It just calls your locally installed CLI tools.
 
 ## Will this get me banned from my provider?
 
@@ -100,7 +100,7 @@ counselors run "Your prompt here"
 counselors run -f prompt.md              # Use a prompt file
 echo "prompt" | counselors run           # Read from stdin
 counselors run --dry-run "Show plan"     # Preview without executing
-counselors run -t claude-opus,claude-opus,claude-opus "Review this"  # Run the same tool multiple times
+counselors run -t opus,opus,opus "Review this"  # Run the same tool multiple times
 ```
 
 | Flag | Description |
@@ -263,6 +263,8 @@ Each run creates a directory under your configured output directory (`defaults.o
   {tool-id}.md           # Each tool's response
   {tool-id}.stderr       # Each tool's stderr
 ```
+
+If the `{slug}` directory already exists, counselors appends a timestamp suffix to avoid collisions.
 
 ## Skill / slash command
 

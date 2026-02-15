@@ -12,12 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tool groups (`groups` config, `counselors groups ...`, and `counselors run --group`)
 - `upgrade` command with install-method detection (Homebrew, npm, pnpm, yarn, standalone binary)
 - Standalone binary releases and `install.sh` curl installer
+- Support running the same tool multiple times by repeating it in `--tools` (e.g. `--tools opus,opus,opus`)
 
 ### Changed
 - Skill template and docs clarify that output directories are configurable via `defaults.outputDir` and `counselors run -o`
+- CI runs Windows unit tests on Node 20, 22, and 24 (matching Ubuntu's Node coverage)
 
 ### Fixed
-- Hardened Windows command execution (cmd metachar safety) and process cleanup behavior
+- Windows: fixed `.cmd/.bat` execution via `cross-spawn` (stdout capture, synthetic ENOENT), and hardened PATH injection + env allowlisting
 
 ## [0.3.4] - 2026-02-10
 
