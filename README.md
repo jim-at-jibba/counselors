@@ -66,9 +66,13 @@ Your main agent handles the rest — it gathers relevant code, recent commits, a
 
 ## Human quickstart
 
-```bash
-npm install -g counselors
+Install the CLI (pick one):
 
+- npm (requires Node 20+): `npm install -g counselors`
+- Homebrew: `brew install aarondfrancis/homebrew-tap/counselors`
+- Standalone binary: `curl -fsSL https://github.com/aarondfrancis/counselors/raw/main/install.sh | bash`
+
+```bash
 # Discover installed AI CLIs and create a config
 counselors init
 
