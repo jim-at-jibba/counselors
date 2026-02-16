@@ -12,8 +12,18 @@ vi.mock('@inquirer/prompts', () => ({
 const { selectModelDetails } = await import('../../src/ui/prompts.js');
 
 const sampleModels = [
-  { id: 'model-a', name: 'Model A', recommended: true, extraFlags: ['-m', 'a'] },
-  { id: 'model-b', name: 'Model B', compoundId: 'tool-model-b', extraFlags: ['-m', 'b'] },
+  {
+    id: 'model-a',
+    name: 'Model A',
+    recommended: true,
+    extraFlags: ['-m', 'a'],
+  },
+  {
+    id: 'model-b',
+    name: 'Model B',
+    compoundId: 'tool-model-b',
+    extraFlags: ['-m', 'b'],
+  },
 ];
 
 describe('selectModelDetails', () => {

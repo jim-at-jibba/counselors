@@ -371,8 +371,7 @@ export async function executeTest(
       error = `Timed out after ${TEST_TIMEOUT / 1000}s`;
     } else if (result.exitCode !== 0) {
       error =
-        result.stderr.trim() ||
-        `Process exited with code ${result.exitCode}`;
+        result.stderr.trim() || `Process exited with code ${result.exitCode}`;
     } else if (echoedPrompt) {
       error =
         'Tool echoed the prompt instead of a model response (check model access)';

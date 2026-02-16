@@ -38,7 +38,9 @@ vi.mock('../../src/ui/prompts.js', () => ({
 }));
 
 // Mock discovery to always find the binary
-const mockDiscoverTool = vi.fn().mockReturnValue({ found: true, path: '/usr/bin/tool', version: '1.0' });
+const mockDiscoverTool = vi
+  .fn()
+  .mockReturnValue({ found: true, path: '/usr/bin/tool', version: '1.0' });
 vi.mock('../../src/core/discovery.js', () => ({
   discoverTool: (...args: unknown[]) => mockDiscoverTool(...args),
   findBinary: () => null,
@@ -52,7 +54,13 @@ const testConfigFile = join(testDir, 'config.json');
 vi.mock('../../src/core/config.js', () => ({
   loadConfig: () => ({
     version: 1,
-    defaults: { timeout: 540, outputDir: '.counselors', readOnly: 'bestEffort', maxContextKb: 50, maxParallel: 4 },
+    defaults: {
+      timeout: 540,
+      outputDir: '.counselors',
+      readOnly: 'bestEffort',
+      maxContextKb: 50,
+      maxParallel: 4,
+    },
     tools: {},
     groups: {},
     configPath: testConfigFile,
@@ -60,7 +68,13 @@ vi.mock('../../src/core/config.js', () => ({
   addToolToConfig: (_config: unknown, _name: string, _tool: unknown) => {
     // Return the config with the tool added so saveConfig receives it
     const cfg = _config as Record<string, unknown>;
-    return { ...cfg, tools: { ...((cfg.tools ?? {}) as Record<string, unknown>), [_name]: _tool } };
+    return {
+      ...cfg,
+      tools: {
+        ...((cfg.tools ?? {}) as Record<string, unknown>),
+        [_name]: _tool,
+      },
+    };
   },
   saveConfig: (config: unknown) => {
     savedConfig = config;
@@ -78,9 +92,7 @@ vi.mock('../../src/core/executor.js', () => ({
 }));
 
 // Import after mocks
-const { registerAddCommand } = await import(
-  '../../src/commands/tools/add.js'
-);
+const { registerAddCommand } = await import('../../src/commands/tools/add.js');
 
 // Minimal Commander-like program
 function createProgram() {
@@ -124,22 +136,37 @@ describe('tools add — custom model flow', () => {
       .mockResolvedValueOnce('my-custom-model') // model identifier
       .mockResolvedValueOnce('--reasoning high') // extra flags
       .mockResolvedValueOnce('codex-my-custom-model'); // tool name (accept default)
-    mockExecuteTest.mockResolvedValueOnce({ toolId: 'codex-my-custom-model', passed: true, output: 'OK', durationMs: 500 });
+    mockExecuteTest.mockResolvedValueOnce({
+      toolId: 'codex-my-custom-model',
+      passed: true,
+      output: 'OK',
+      durationMs: 500,
+    });
 
     await program.run('codex');
 
     // Should have prompted for model identifier and extra flags
     expect(mockPromptInput).toHaveBeenCalledWith('Model identifier:');
-    expect(mockPromptInput).toHaveBeenCalledWith('Extra flags (optional, space-separated):');
+    expect(mockPromptInput).toHaveBeenCalledWith(
+      'Extra flags (optional, space-separated):',
+    );
 
     // Should have prompted for name with derived default
-    expect(mockPromptInput).toHaveBeenCalledWith('Tool name:', 'codex-my-custom-model');
+    expect(mockPromptInput).toHaveBeenCalledWith(
+      'Tool name:',
+      'codex-my-custom-model',
+    );
 
     // Should save the config with adapter's modelFlag + model id + extra flags
     expect(savedConfig).not.toBeNull();
     const tools = (savedConfig as any).tools;
     expect(tools['codex-my-custom-model']).toBeDefined();
-    expect(tools['codex-my-custom-model'].extraFlags).toEqual(['-m', 'my-custom-model', '--reasoning', 'high']);
+    expect(tools['codex-my-custom-model'].extraFlags).toEqual([
+      '-m',
+      'my-custom-model',
+      '--reasoning',
+      'high',
+    ]);
     expect(tools['codex-my-custom-model'].adapter).toBe('codex');
 
     // Should run a test after saving
@@ -156,7 +183,12 @@ describe('tools add — custom model flow', () => {
       .mockResolvedValueOnce('gpt-5.1') // model identifier
       .mockResolvedValueOnce('') // no extra flags
       .mockResolvedValueOnce('codex-gpt-5.1'); // tool name
-    mockExecuteTest.mockResolvedValueOnce({ toolId: 'codex-gpt-5.1', passed: true, output: 'OK', durationMs: 200 });
+    mockExecuteTest.mockResolvedValueOnce({
+      toolId: 'codex-gpt-5.1',
+      passed: true,
+      output: 'OK',
+      durationMs: 200,
+    });
 
     await program.run('codex');
 
@@ -174,16 +206,27 @@ describe('tools add — custom model flow', () => {
       .mockResolvedValueOnce('openai/gpt-5') // model identifier with /
       .mockResolvedValueOnce('') // no extra flags
       .mockResolvedValueOnce('codex-openai_gpt-5'); // accept sanitized default
-    mockExecuteTest.mockResolvedValueOnce({ toolId: 'codex-openai_gpt-5', passed: true, output: 'OK', durationMs: 200 });
+    mockExecuteTest.mockResolvedValueOnce({
+      toolId: 'codex-openai_gpt-5',
+      passed: true,
+      output: 'OK',
+      durationMs: 200,
+    });
 
     await program.run('codex');
 
     // Default name should sanitize / to _
-    expect(mockPromptInput).toHaveBeenCalledWith('Tool name:', 'codex-openai_gpt-5');
+    expect(mockPromptInput).toHaveBeenCalledWith(
+      'Tool name:',
+      'codex-openai_gpt-5',
+    );
 
     // extraFlags should use the raw model ID (not sanitized)
     const tools = (savedConfig as any).tools;
-    expect(tools['codex-openai_gpt-5'].extraFlags).toEqual(['-m', 'openai/gpt-5']);
+    expect(tools['codex-openai_gpt-5'].extraFlags).toEqual([
+      '-m',
+      'openai/gpt-5',
+    ]);
   });
 
   it('errors on empty model identifier', async () => {
@@ -239,13 +282,21 @@ describe('tools add — custom model flow', () => {
       .mockResolvedValueOnce('sonnet-next') // model identifier
       .mockResolvedValueOnce('') // no extra flags
       .mockResolvedValueOnce('claude-sonnet-next'); // tool name
-    mockExecuteTest.mockResolvedValueOnce({ toolId: 'claude-sonnet-next', passed: true, output: 'OK', durationMs: 300 });
+    mockExecuteTest.mockResolvedValueOnce({
+      toolId: 'claude-sonnet-next',
+      passed: true,
+      output: 'OK',
+      durationMs: 300,
+    });
 
     await program.run('claude');
 
     // Claude adapter uses --model, not -m
     const tools = (savedConfig as any).tools;
-    expect(tools['claude-sonnet-next'].extraFlags).toEqual(['--model', 'sonnet-next']);
+    expect(tools['claude-sonnet-next'].extraFlags).toEqual([
+      '--model',
+      'sonnet-next',
+    ]);
     expect(tools['claude-sonnet-next'].adapter).toBe('claude');
   });
 
@@ -268,7 +319,12 @@ describe('tools add — custom model flow', () => {
     // Verify saved config has correct extraFlags from the selected model
     const tools = (savedConfig as any).tools;
     expect(tools['codex-5.3-high']).toBeDefined();
-    expect(tools['codex-5.3-high'].extraFlags).toEqual(['-m', 'gpt-5.3-codex', '-c', 'model_reasoning_effort=high']);
+    expect(tools['codex-5.3-high'].extraFlags).toEqual([
+      '-m',
+      'gpt-5.3-codex',
+      '-c',
+      'model_reasoning_effort=high',
+    ]);
     expect(tools['codex-5.3-high'].adapter).toBe('codex');
   });
 });

@@ -129,7 +129,9 @@ async function addBuiltInTool(
       return;
     }
 
-    const extraInput = await promptInput('Extra flags (optional, space-separated):');
+    const extraInput = await promptInput(
+      'Extra flags (optional, space-separated):',
+    );
     const parsedExtra = extraInput.trim() ? extraInput.trim().split(/\s+/) : [];
     extraFlags = [adapter.modelFlag ?? '-m', modelId.trim(), ...parsedExtra];
 
@@ -139,8 +141,7 @@ async function addBuiltInTool(
     const fallbackName = selectedModel.id.startsWith(`${toolId}-`)
       ? selectedModel.id
       : `${toolId}-${selectedModel.id}`;
-    defaultName =
-      nameOverride ?? selectedModel.compoundId ?? fallbackName;
+    defaultName = nameOverride ?? selectedModel.compoundId ?? fallbackName;
   }
 
   let name = nameOverride ?? (await promptInput('Tool name:', defaultName));
