@@ -49,6 +49,7 @@ jobs:
     if: github.actor == 'aarondfrancis'
     outputs:
       version: ${{ steps.version.outputs.number }}
+      npm_sha256: ${{ steps.tarball.outputs.sha256 }}
 
     steps:
       - name: Checkout
@@ -115,6 +116,31 @@ jobs:
       - name: Publish to npm
         run: npm publish --provenance --access public
 
+      - name: Resolve npm tarball checksum
+        id: tarball
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.number }}"
+          URL="https://registry.npmjs.org/counselors/-/counselors-${VERSION}.tgz"
+          TMP_TGZ="$(mktemp)"
+
+          for attempt in {1..10}; do
+            if curl -fsSL "$URL" -o "$TMP_TGZ"; then
+              SHA256="$(sha256sum "$TMP_TGZ" | awk '{print $1}')"
+              if [[ "$SHA256" =~ ^[A-Fa-f0-9]{64}$ ]]; then
+                echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+
+            if [ "$attempt" -eq 10 ]; then
+              echo "Failed to download npm tarball checksum from: $URL"
+              exit 1
+            fi
+
+            sleep 6
+          done
+
   release-binaries:
     needs: release
     if: github.actor == 'aarondfrancis'
@@ -128,11 +154,137 @@ jobs:
     if: github.actor == 'aarondfrancis'
     steps:
       - name: Update Homebrew formula
-        uses: mislav/bump-homebrew-formula-action@v3
-        with:
-          formula-name: counselors
-          homebrew-tap: aarondfrancis/homebrew-tap
-          tag-name: v${{ needs.release.outputs.version }}
-          download-url: https://registry.npmjs.org/counselors/-/counselors-${{ needs.release.outputs.version }}.tgz
         env:
+          VERSION: ${{ needs.release.outputs.version }}
+          SHA256: ${{ needs.release.outputs.npm_sha256 }}
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${COMMITTER_TOKEN:-}" ]; then
+            echo "HOMEBREW_TAP_TOKEN is not configured."
+            exit 1
+          fi
+
+          TAP_DIR="$(mktemp -d)"
+          FORMULA_PATH="Formula/counselors.rb"
+          URL="https://registry.npmjs.org/counselors/-/counselors-${VERSION}.tgz"
+
+          git clone "https://x-access-token:${COMMITTER_TOKEN}@github.com/aarondfrancis/homebrew-tap.git" "$TAP_DIR"
+          cd "$TAP_DIR"
+
+          perl -i -pe "s#^\\s*url\\s+\"[^\"]+\"#  url \"$URL\"#" "$FORMULA_PATH"
+          perl -i -pe "s#^\\s*sha256\\s+(:no_check|\"[^\"]+\")#  sha256 \"$SHA256\"#" "$FORMULA_PATH"
+          perl -i -ne "print unless /Bootstrap value; replace with pinned sha256/" "$FORMULA_PATH"
+
+          if git diff --quiet -- "$FORMULA_PATH"; then
+            echo "No Homebrew formula changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FORMULA_PATH"
+          git commit -m "counselors ${VERSION}"
+          git push origin main
+
+  smoke-test-installs:
+    needs:
+      - release
+      - release-binaries
+      - update-homebrew
+    runs-on: macos-latest
+    if: github.actor == 'aarondfrancis'
+    strategy:
+      fail-fast: false
+      matrix:
+        method:
+          - npm
+          - standalone
+          - homebrew
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Smoke test npm install
+        if: matrix.method == 'npm'
+        run: |
+          set -euo pipefail
+          PREFIX="$RUNNER_TEMP/counselors-npm"
+          rm -rf "$PREFIX"
+
+          for attempt in {1..8}; do
+            if npm install -g "counselors@${VERSION}" --prefix "$PREFIX"; then
+              break
+            fi
+
+            if [ "$attempt" -eq 8 ]; then
+              echo "npm install failed after retries."
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          "$PREFIX/bin/counselors" --help >/dev/null
+          test "$("$PREFIX/bin/counselors" --version)" = "$VERSION"
+
+      - name: Smoke test standalone install
+        if: matrix.method == 'standalone'
+        run: |
+          set -euo pipefail
+          INSTALL_DIR="$RUNNER_TEMP/counselors-standalone"
+          SCRIPT="$RUNNER_TEMP/counselors-install.sh"
+
+          curl -fsSL https://github.com/aarondfrancis/counselors/raw/main/install.sh -o "$SCRIPT"
+          chmod +x "$SCRIPT"
+          rm -rf "$INSTALL_DIR"
+          mkdir -p "$INSTALL_DIR"
+
+          for attempt in {1..8}; do
+            if INSTALL_DIR="$INSTALL_DIR" bash "$SCRIPT"; then
+              break
+            fi
+
+            if [ "$attempt" -eq 8 ]; then
+              echo "standalone install failed after retries."
+              exit 1
+            fi
+
+            rm -f "$INSTALL_DIR/counselors"
+            sleep 10
+          done
+
+          "$INSTALL_DIR/counselors" --help >/dev/null
+          test "$("$INSTALL_DIR/counselors" --version)" = "$VERSION"
+
+      - name: Smoke test Homebrew install
+        if: matrix.method == 'homebrew'
+        run: |
+          set -euo pipefail
+
+          brew tap aarondfrancis/homebrew-tap
+
+          for attempt in {1..8}; do
+            if brew list --versions counselors >/dev/null 2>&1; then
+              brew upgrade aarondfrancis/homebrew-tap/counselors || true
+            else
+              brew install aarondfrancis/homebrew-tap/counselors || true
+            fi
+
+            INSTALLED_VERSION="$(brew list --versions counselors 2>/dev/null | awk '{print $2}')"
+            if [ "$INSTALLED_VERSION" = "$VERSION" ]; then
+              break
+            fi
+
+            if [ "$attempt" -eq 8 ]; then
+              echo "Homebrew install failed after retries."
+              exit 1
+            fi
+
+            brew uninstall counselors --force >/dev/null 2>&1 || true
+            sleep 15
+          done
+
+          BREW_BIN="$(brew --prefix counselors)/bin/counselors"
+          "$BREW_BIN" --help >/dev/null
+          test "$("$BREW_BIN" --version)" = "$VERSION"
