@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `tools add` custom model flow now asks for a model identifier instead of raw CLI flags, and constructs the correct flags automatically per adapter
 
+### Fixed
+- Gemini CLI with Vertex AI auth now works — `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION` are passed to subprocesses (#13)
+
 ## [0.4.9] - 2026-02-16
 
 ### Fixed
