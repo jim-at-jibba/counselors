@@ -366,8 +366,7 @@ export async function executeTest(
       error = `Timed out after ${TEST_TIMEOUT / 1000}s`;
     } else if (result.exitCode !== 0) {
       error =
-        result.stderr.trim() ||
-        `Process exited with code ${result.exitCode}`;
+        result.stderr.trim() || `Process exited with code ${result.exitCode}`;
     } else if (result.stderr.trim()) {
       error = result.stderr.slice(0, 500);
     } else {
