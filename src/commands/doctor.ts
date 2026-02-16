@@ -181,8 +181,7 @@ export function registerDoctorCommand(program: Command): void {
         join(home, '.local', 'bin', 'counselors'),
         join(home, 'bin', 'counselors'),
       ];
-      const hasStandalone =
-        home && standalonePaths.some((p) => existsSync(p));
+      const hasStandalone = home && standalonePaths.some((p) => existsSync(p));
       if (hasStandalone) sources.push('standalone');
       if (sources.length > 1) {
         checks.push({
