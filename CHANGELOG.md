@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Gemini model IDs now use Gemini 3 names (`gemini-3-pro`, `gemini-3-flash`) in adapter config and README group examples.
+- Release workflow now calls the binaries workflow directly via `workflow_call` instead of relying on tag-push side effects.
+
+### Fixed
+- Release workflow now passes an explicit tag to Homebrew update logic in manual (`workflow_dispatch`) runs.
+- Homebrew formula updates now pin the npm tarball SHA256 and replace `sha256 :no_check`, so `brew install` succeeds.
+- Release workflow now runs parallel smoke tests for npm, standalone installer, and Homebrew installs, validating `--help` and version output.
+
 ## [0.4.2] - 2026-02-16
 
 ### Fixed
