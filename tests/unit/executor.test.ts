@@ -228,7 +228,8 @@ describe('execute', () => {
     expect(spawnedPid).toBeGreaterThan(0);
   });
 
-  it('calls onSpawn with undefined pid for missing binary', async () => {
+  it('calls onSpawn for missing binary', async () => {
+    let called = false;
     let spawnedPid: number | undefined = 999;
     await execute(
       {
@@ -238,11 +239,19 @@ describe('execute', () => {
       },
       5000,
       (pid) => {
+        called = true;
         spawnedPid = pid;
       },
     );
 
-    expect(spawnedPid).toBeUndefined();
+    expect(called).toBe(true);
+    // On POSIX, pid is undefined for missing binaries.
+    // On Windows, cross-spawn routes through cmd.exe so a real PID exists.
+    if (process.platform === 'win32') {
+      expect(spawnedPid).toBeTypeOf('number');
+    } else {
+      expect(spawnedPid).toBeUndefined();
+    }
   });
 
   it('handles missing binary', async () => {
