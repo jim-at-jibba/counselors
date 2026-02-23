@@ -1,12 +1,13 @@
 import { resolve } from 'node:path';
 import type { Command } from 'commander';
 import { dispatch } from '../core/dispatcher.js';
+import { generateSlug } from '../core/prompt-builder.js';
 import { safeWriteFile } from '../core/fs-utils.js';
 import { synthesize } from '../core/synthesis.js';
 import type { RunManifest, ToolReport } from '../types.js';
 import { info } from '../ui/logger.js';
-import { formatDryRun, formatRunSummary } from '../ui/output.js';
-import { ProgressDisplay } from '../ui/progress.js';
+import { formatDryRun } from '../ui/output.js';
+import { createReporter } from '../ui/reporter.js';
 import {
   buildDryRunInvocations,
   createOutputDir,
@@ -63,7 +64,7 @@ export function registerRunCommand(program: Command): void {
         const prompt = await resolvePrompt(promptArg, opts, cwd, config);
         if (!prompt) return;
         let { promptContent, promptSource, slug } = prompt;
-        if (!slug) slug = `${Date.now()}-run`;
+        if (!slug) slug = generateSlug('run');
 
         // Dry run — no filesystem side effects
         if (opts.dryRun) {
@@ -93,7 +94,8 @@ export function registerRunCommand(program: Command): void {
         const promptLabel = getPromptLabel(promptArg, opts.file);
 
         // Dispatch (single-shot)
-        const display = new ProgressDisplay(toolIds, outputDir);
+        const reporter = createReporter();
+        reporter.executionStarted(outputDir, toolIds);
 
         let reports: ToolReport[];
         try {
@@ -107,13 +109,13 @@ export function registerRunCommand(program: Command): void {
             cwd,
             onProgress: (event) => {
               if (event.event === 'started')
-                display.start(event.toolId, event.pid);
+                reporter.toolStarted(event.toolId, event.pid);
               if (event.event === 'completed')
-                display.complete(event.toolId, event.report!);
+                reporter.toolCompleted(event.toolId, event.report!);
             },
           });
         } finally {
-          display.stop();
+          reporter.executionFinished();
         }
 
         // Build manifest
@@ -135,11 +137,7 @@ export function registerRunCommand(program: Command): void {
         safeWriteFile(resolve(outputDir, 'summary.md'), summary);
 
         // Output
-        if (opts.json) {
-          info(JSON.stringify(manifest, null, 2));
-        } else {
-          info(formatRunSummary(manifest));
-        }
+        reporter.printSummary(manifest, { json: opts.json });
       },
     );
 }
