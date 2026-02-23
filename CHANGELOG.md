@@ -21,12 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced monolithic `ProgressDisplay` with event-driven Reporter interface — `TerminalReporter` for TTY, `AgentReporter` for non-TTY, `NullReporter` for dry-run
 - Loop prompt augmentation now uses stronger multi-round guidance: challenge prior findings, use prior findings as leads, and mark overlap status (`confirmed`, `refined`, `invalidated`, `duplicate`)
 - Duration-based loop runs are now truly unbounded by round count (removed hidden 999-round cap); reporter shows `Round N` when total rounds are open-ended
-- Prior-round prompt references are capped to the most recent 24 reports to control prompt growth in long loops
+- Prior-round prompt references are capped to the most recent 8 reports to control prompt growth in long loops
+
+### Fixed
+- Restored `npm run typecheck` health by fixing `runLoop` abort-state narrowing around SIGINT handling
+
+## [0.4.12] - 2026-02-19
 
 ### Fixed
 - `run -f` no longer creates duplicate output directories when the prompt file already lives inside the output base directory
 - Gemini adapter appends a prompt instruction to suppress tool-use narration ("I will read...", "I will list...") that was polluting headless output
-- Restored `npm run typecheck` health by fixing `runLoop` abort-state narrowing around SIGINT handling
+
 
 ## [0.4.11] - 2026-02-19
 
@@ -193,7 +198,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release workflow accepts leading `v` in version input
 
 
-[Unreleased]: https://github.com/aarondfrancis/counselors/compare/v0.4.11...HEAD
+[Unreleased]: https://github.com/aarondfrancis/counselors/compare/v0.4.12...HEAD
 [0.3.0]: https://github.com/aarondfrancis/counselors/releases/tag/v0.3.0
 [0.3.1]: https://github.com/aarondfrancis/counselors/releases/tag/v0.3.1
 [0.3.2]: https://github.com/aarondfrancis/counselors/releases/tag/v0.3.2
@@ -211,3 +216,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.4.9]: https://github.com/aarondfrancis/counselors/releases/tag/v0.4.9
 [0.4.10]: https://github.com/aarondfrancis/counselors/releases/tag/v0.4.10
 [0.4.11]: https://github.com/aarondfrancis/counselors/releases/tag/v0.4.11
+[0.4.12]: https://github.com/aarondfrancis/counselors/releases/tag/v0.4.12
