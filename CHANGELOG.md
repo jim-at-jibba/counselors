@@ -8,21 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `loop` command for multi-round dispatch — agents iterate across rounds, seeing prior outputs each round (`--rounds`, `--duration`, `--preset`, `--scope`)
-- Presets system for domain-specific multi-round workflows (`--preset bug-hunt` for automated bug hunting)
+- `loop --list-presets` to print built-in presets with defaults and summaries
+- Presets system for domain-specific multi-round workflows, now with single-word built-ins: `bughunt`, `security`, `invariants`, `regression`, `contracts`, `hotspots`
 - Custom presets via YAML files — pass `--preset path/to/preset.yml` to use your own preset definitions
 - Non-TTY heartbeat: emits elapsed time and active PIDs to stderr every 60 seconds, preventing outer-agent timeouts during long-running dispatches
 
 ### Changed
 - Built-in presets are now YAML files with schema validation instead of hardcoded TypeScript
-- Output directory names include a timestamp prefix for uniqueness (e.g. `1740300000-bug-hunt`)
+- Output directory names include a timestamp prefix for uniqueness (e.g. `1740300000-bughunt`)
 - Relative output paths in run summaries display with `./` prefix for terminal clickability
 - Non-TTY output is purpose-built for agent consumers with structured lifecycle messages (phase started/completed, tool started/completed with PID and duration)
 - Replaced monolithic `ProgressDisplay` with event-driven Reporter interface — `TerminalReporter` for TTY, `AgentReporter` for non-TTY, `NullReporter` for dry-run
+- Loop prompt augmentation now uses stronger multi-round guidance: challenge prior findings, use prior findings as leads, and mark overlap status (`confirmed`, `refined`, `invalidated`, `duplicate`)
+- Duration-based loop runs are now truly unbounded by round count (removed hidden 999-round cap); reporter shows `Round N` when total rounds are open-ended
+- Prior-round prompt references are capped to the most recent 24 reports to control prompt growth in long loops
 
 ### Fixed
 - `run -f` no longer creates duplicate output directories when the prompt file already lives inside the output base directory
 - Gemini adapter appends a prompt instruction to suppress tool-use narration ("I will read...", "I will list...") that was polluting headless output
+- Restored `npm run typecheck` health by fixing `runLoop` abort-state narrowing around SIGINT handling
 
 ## [0.4.11] - 2026-02-19
 
