@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { gatherContext } from '../../src/core/context.js';
+import { gatherContext, truncateUtf8 } from '../../src/core/context.js';
 
 const testDir = join(tmpdir(), `counselors-ctx-test-${Date.now()}`);
 
@@ -69,5 +69,56 @@ describe('gatherContext', () => {
     expect(ctx).toContain('first.txt');
     // second.txt has 600 bytes which exceeds remaining budget
     expect(ctx).not.toContain('bbbbb');
+  });
+
+  it('uses extended fence when file contains triple backticks', () => {
+    const content = 'some code\n```\ninner block\n```\nmore code';
+    writeFileSync(join(testDir, 'fenced.txt'), content);
+    const ctx = gatherContext(testDir, ['fenced.txt']);
+    // Should use at least 4 backticks to avoid conflict
+    expect(ctx).toContain('````');
+    expect(ctx).toContain(content);
+  });
+});
+
+describe('truncateUtf8', () => {
+  it('returns string unchanged when within budget', () => {
+    expect(truncateUtf8('hello', 100)).toBe('hello');
+  });
+
+  it('truncates ASCII cleanly', () => {
+    expect(truncateUtf8('hello world', 5)).toBe('hello');
+  });
+
+  it('does not split multi-byte emoji', () => {
+    // 😀 is a 4-byte character (U+1F600)
+    const emoji = '😀😀😀';
+    const result = truncateUtf8(emoji, 6);
+    // 6 bytes can only fit one 4-byte emoji cleanly
+    expect(result).toBe('😀');
+    expect(result).not.toContain('\uFFFD');
+  });
+
+  it('does not produce replacement characters on 2-byte chars', () => {
+    // é is a 2-byte character in UTF-8
+    const str = 'café';
+    // 'caf' = 3 bytes, 'é' = 2 bytes = 5 total
+    const result = truncateUtf8(str, 4);
+    expect(result).toBe('caf');
+    expect(result).not.toContain('\uFFFD');
+  });
+
+  it('does not split 3-byte CJK characters', () => {
+    // 你 is a 3-byte character in UTF-8 (U+4F60)
+    const str = '你好世界';
+    // Each char is 3 bytes = 12 total
+    const result = truncateUtf8(str, 7);
+    // 7 bytes fits two 3-byte chars (6 bytes), not a partial third
+    expect(result).toBe('你好');
+    expect(result).not.toContain('\uFFFD');
+  });
+
+  it('returns empty string when maxBytes is 0', () => {
+    expect(truncateUtf8('hello', 0)).toBe('');
   });
 });

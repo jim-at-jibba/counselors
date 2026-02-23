@@ -137,12 +137,11 @@ export function removeToolFromConfig(config: Config, id: string): Config {
   const tools = { ...config.tools };
   delete tools[id];
 
-  // Remove references from any groups.
+  // Remove references from any groups and prune empty groups.
   const groups = Object.fromEntries(
-    Object.entries(config.groups).map(([name, toolIds]) => [
-      name,
-      toolIds.filter((t) => t !== id),
-    ]),
+    Object.entries(config.groups)
+      .map(([name, toolIds]) => [name, toolIds.filter((t) => t !== id)])
+      .filter(([, ids]) => (ids as string[]).length > 0),
   );
 
   return { ...config, tools, groups };

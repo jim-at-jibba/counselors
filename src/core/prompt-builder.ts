@@ -13,7 +13,7 @@ export function generateSlug(text: string): string {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
-    .slice(0, MAX_SLUG_LENGTH);
+    .slice(0, MAX_SLUG_LENGTH) || 'untitled';
 }
 
 /**

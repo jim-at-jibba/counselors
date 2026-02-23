@@ -447,6 +447,27 @@ describe('addToolToConfig / removeToolFromConfig', () => {
     const updated = removeToolFromConfig(config, 'a');
     expect(updated.groups.smart).toEqual(['b']);
   });
+
+  it('prunes empty groups when last tool is removed', () => {
+    const config: Config = {
+      version: 1,
+      defaults: {
+        timeout: 540,
+        outputDir: './agents/counselors',
+        readOnly: 'bestEffort',
+        maxContextKb: 50,
+        maxParallel: 4,
+      },
+      tools: {
+        a: { binary: '/bin/a', readOnly: { level: 'enforced' } },
+      },
+      groups: { solo: ['a'] },
+    };
+
+    const updated = removeToolFromConfig(config, 'a');
+    expect(updated.groups.solo).toBeUndefined();
+    expect(Object.keys(updated.groups)).toHaveLength(0);
+  });
 });
 
 describe('renameToolInConfig', () => {

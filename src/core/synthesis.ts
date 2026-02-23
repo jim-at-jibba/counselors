@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sanitizeId } from '../constants.js';
-import type { RunManifest, ToolReport } from '../types.js';
+import type { RoundManifest, RunManifest, ToolReport } from '../types.js';
 
 /**
- * Generate a heuristic summary of run results (v1 — no LLM).
+ * Build a heuristic markdown summary from run results: status table,
+ * per-tool heading extraction, and optional cost breakdown.
+ * No LLM calls — purely structural extraction from the output files.
  */
 export function synthesize(manifest: RunManifest, outputDir: string): string {
   const parts: string[] = [
@@ -75,8 +77,59 @@ export function synthesize(manifest: RunManifest, outputDir: string): string {
   return parts.join('\n');
 }
 
+/**
+ * Build a combined markdown summary across all rounds of a multi-round run.
+ * Lists each round's tools with status, timing, and extracted headings.
+ */
+export function synthesizeFinal(
+  rounds: RoundManifest[],
+  outputDir: string,
+): string {
+  const parts: string[] = [
+    '# Final Synthesis',
+    '',
+    `**Rounds completed:** ${rounds.length}`,
+    '',
+  ];
+
+  for (const round of rounds) {
+    const roundDir = join(outputDir, `round-${round.round}`);
+    parts.push(`## Round ${round.round}`);
+    parts.push('');
+
+    for (const report of round.tools) {
+      const icon =
+        report.status === 'success'
+          ? '✓'
+          : report.status === 'timeout'
+            ? '⏱'
+            : '✗';
+      const duration = (report.durationMs / 1000).toFixed(1);
+      parts.push(`### ${icon} ${report.toolId}`);
+      parts.push(
+        `- Status: ${report.status} (${duration}s, ${report.wordCount} words)`,
+      );
+
+      if (report.status === 'success') {
+        const headings = extractHeadings(roundDir, report);
+        if (headings.length > 0) {
+          parts.push('- Key sections:');
+          for (const h of headings) {
+            parts.push(`  - ${h}`);
+          }
+        }
+      }
+
+      parts.push('');
+    }
+  }
+
+  return parts.join('\n');
+}
+
 function extractHeadings(outputDir: string, report: ToolReport): string[] {
-  const filePath = join(outputDir, `${sanitizeId(report.toolId)}.md`);
+  const filePath =
+    report.outputFile || join(outputDir, `${sanitizeId(report.toolId)}.md`);
   if (!existsSync(filePath)) return [];
 
   try {

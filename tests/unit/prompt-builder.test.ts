@@ -40,7 +40,12 @@ describe('generateSlug', () => {
   });
 
   it('handles empty string', () => {
-    expect(generateSlug('')).toBe('');
+    expect(generateSlug('')).toBe('untitled');
+  });
+
+  it('returns "untitled" for non-alphanumeric input', () => {
+    expect(generateSlug('!!!')).toBe('untitled');
+    expect(generateSlug('!@#$%')).toBe('untitled');
   });
 
   it('collapses multiple hyphens', () => {

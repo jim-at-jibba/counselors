@@ -334,6 +334,94 @@ describe('execute', () => {
     expect(result.stdout).toBe('tool-specific');
   });
 
+  it('blocks NODE_OPTIONS injected via invocation.env', async () => {
+    const result = await execute(
+      {
+        cmd: 'node',
+        args: [
+          '-e',
+          'process.stdout.write(process.env.NODE_OPTIONS || "NOT_SET")',
+        ],
+        env: { NODE_OPTIONS: '--max-old-space-size=4096' },
+        cwd: process.cwd(),
+      },
+      5000,
+    );
+
+    expect(result.stdout).toBe('NOT_SET');
+  });
+
+  it('blocks LD_PRELOAD injected via invocation.env', async () => {
+    const result = await execute(
+      {
+        cmd: 'node',
+        args: [
+          '-e',
+          'process.stdout.write(process.env.LD_PRELOAD || "NOT_SET")',
+        ],
+        env: { LD_PRELOAD: '/tmp/evil.so' },
+        cwd: process.cwd(),
+      },
+      5000,
+    );
+
+    expect(result.stdout).toBe('NOT_SET');
+  });
+
+  it('blocks DYLD_INSERT_LIBRARIES injected via invocation.env', async () => {
+    const result = await execute(
+      {
+        cmd: 'node',
+        args: [
+          '-e',
+          'process.stdout.write(process.env.DYLD_INSERT_LIBRARIES || "NOT_SET")',
+        ],
+        env: { DYLD_INSERT_LIBRARIES: '/tmp/evil.dylib' },
+        cwd: process.cwd(),
+      },
+      5000,
+    );
+
+    expect(result.stdout).toBe('NOT_SET');
+  });
+
+  it('blocks ELECTRON_RUN_AS_NODE injected via invocation.env', async () => {
+    const result = await execute(
+      {
+        cmd: 'node',
+        args: [
+          '-e',
+          'process.stdout.write(process.env.ELECTRON_RUN_AS_NODE || "NOT_SET")',
+        ],
+        env: { ELECTRON_RUN_AS_NODE: '1' },
+        cwd: process.cwd(),
+      },
+      5000,
+    );
+
+    expect(result.stdout).toBe('NOT_SET');
+  });
+
+  it('allows non-denylisted keys from invocation.env', async () => {
+    const result = await execute(
+      {
+        cmd: 'node',
+        args: [
+          '-e',
+          'process.stdout.write(process.env.CUSTOM_VAR || "MISSING")',
+        ],
+        env: {
+          CUSTOM_VAR: 'allowed',
+          NODE_OPTIONS: '--should-be-blocked',
+        },
+        cwd: process.cwd(),
+      },
+      5000,
+    );
+
+    expect(result.stdout).toBe('allowed');
+  });
+
   it('passes API key env vars through to child processes', async () => {
     process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
     process.env.OPENAI_API_KEY = 'test-openai-key';

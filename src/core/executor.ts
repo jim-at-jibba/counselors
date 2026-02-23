@@ -58,13 +58,35 @@ function killProcessGroup(child: ChildProcess, signal: NodeJS.Signals): void {
   }
 }
 
+let sigintExitTimer: ReturnType<typeof setTimeout> | null = null;
+
 process.on('SIGINT', () => {
   for (const child of activeChildren) {
     killProcessGroup(child, 'SIGTERM');
   }
   // Give children a moment to exit, then force-exit
-  setTimeout(() => process.exit(1), 2000);
+  sigintExitTimer = setTimeout(() => process.exit(1), 2000);
 });
+
+/** Clear the scheduled auto-exit so the loop can finish writing manifests. */
+export function clearSigintExit(): void {
+  if (sigintExitTimer) {
+    clearTimeout(sigintExitTimer);
+    sigintExitTimer = null;
+  }
+}
+
+const ENV_DENYLIST = new Set([
+  'NODE_OPTIONS',
+  'NODE_EXTRA_CA_CERTS',
+  'LD_PRELOAD',
+  'LD_LIBRARY_PATH',
+  'LD_AUDIT',
+  'DYLD_INSERT_LIBRARIES',
+  'DYLD_LIBRARY_PATH',
+  'DYLD_FRAMEWORK_PATH',
+  'ELECTRON_RUN_AS_NODE',
+]);
 
 const ENV_ALLOWLIST = [
   'PATH',
@@ -116,7 +138,11 @@ function buildSafeEnv(extra?: Record<string, string>): Record<string, string> {
   for (const key of ENV_ALLOWLIST) {
     if (process.env[key]) env[key] = process.env[key]!;
   }
-  if (extra) Object.assign(env, extra);
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (!ENV_DENYLIST.has(key)) env[key] = value;
+    }
+  }
   env.CI = 'true';
   env.NO_COLOR = '1';
   return env;
@@ -195,6 +221,9 @@ export function execute(
       windowsHide: true,
     });
 
+    // Track active children for SIGINT cleanup immediately after spawn
+    activeChildren.add(child);
+
     onSpawn?.(child.pid);
 
     const stdoutStream = child.stdout;
@@ -202,6 +231,8 @@ export function execute(
     const stdinStream = child.stdin;
 
     if (!stdoutStream || !stderrStream || !stdinStream) {
+      killProcessGroup(child, 'SIGKILL');
+      activeChildren.delete(child);
       resolve({
         exitCode: 1,
         stdout: '',
@@ -211,9 +242,6 @@ export function execute(
       });
       return;
     }
-
-    // Track active children for SIGINT cleanup
-    activeChildren.add(child);
 
     stdoutStream.on('data', (data: Buffer) => {
       if (!truncated && stdout.length < MAX_OUTPUT_BYTES) {
