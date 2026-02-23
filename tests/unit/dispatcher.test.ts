@@ -258,6 +258,57 @@ describe('dispatch', () => {
     expect(reports).toHaveLength(2);
   });
 
+  it('uses adapter parseResult for status and wordCount', async () => {
+    // The mock executor returns exitCode: 0, stdout: 'mock output'.
+    // BaseAdapter.parseResult computes status: 'success', wordCount: 2.
+    // Dispatcher defaults are status: 'error', wordCount: 0.
+    // Adapter's values should win via ...parsed spread.
+    const config = makeConfig({
+      claude: {
+        binary: '/usr/bin/claude',
+        readOnly: { level: 'enforced' },
+      },
+    });
+
+    const reports = await dispatch({
+      config,
+      toolIds: ['claude'],
+      promptFilePath: '/tmp/prompt.md',
+      promptContent: 'test',
+      outputDir: testDir,
+      readOnlyPolicy: 'none',
+      cwd: process.cwd(),
+    });
+
+    expect(reports[0].status).toBe('success'); // from adapter, not dispatcher default 'error'
+    expect(reports[0].wordCount).toBe(2); // from adapter, not dispatcher default 0
+  });
+
+  it('dispatcher-only fields are not overridden by adapter', async () => {
+    const config = makeConfig({
+      claude: {
+        binary: '/usr/bin/claude',
+        readOnly: { level: 'enforced' },
+      },
+    });
+
+    const reports = await dispatch({
+      config,
+      toolIds: ['claude'],
+      promptFilePath: '/tmp/prompt.md',
+      promptContent: 'test',
+      outputDir: testDir,
+      readOnlyPolicy: 'none',
+      cwd: process.cwd(),
+    });
+
+    // outputFile and stderrFile are set by dispatcher, not adapter
+    expect(reports[0].outputFile).toContain('claude.md');
+    expect(reports[0].stderrFile).toContain('claude.stderr');
+    // No error for successful runs
+    expect(reports[0].error).toBeUndefined();
+  });
+
   it('skips amp-deep under enforced read-only policy', async () => {
     const config = makeConfig({
       'amp-deep': {

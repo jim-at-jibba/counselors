@@ -172,7 +172,7 @@ export function execute(
     let stdout = '';
     let stderr = '';
     let timedOut = false;
-    let killed = false;
+    let processExited = false;
     let killTimer: NodeJS.Timeout | undefined;
     let truncated = false;
 
@@ -272,14 +272,14 @@ export function execute(
       timedOut = true;
       killProcessGroup(child, 'SIGTERM');
       killTimer = setTimeout(() => {
-        if (!killed) {
+        if (!processExited) {
           killProcessGroup(child, 'SIGKILL');
         }
       }, KILL_GRACE_PERIOD);
     }, timeoutMs);
 
     child.on('close', (code) => {
-      killed = true;
+      processExited = true;
       clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
       activeChildren.delete(child);
@@ -293,7 +293,7 @@ export function execute(
     });
 
     child.on('error', (err) => {
-      killed = true;
+      processExited = true;
       clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
       activeChildren.delete(child);

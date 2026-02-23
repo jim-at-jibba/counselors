@@ -1,3 +1,4 @@
+import { countWords } from '../core/text-utils.js';
 import type {
   ExecResult,
   Invocation,
@@ -32,7 +33,7 @@ export abstract class BaseAdapter implements ToolAdapter {
           : 'error',
       exitCode: result.exitCode,
       durationMs: result.durationMs,
-      wordCount: result.stdout.split(/\s+/).filter(Boolean).length,
+      wordCount: countWords(result.stdout),
     };
   }
 }

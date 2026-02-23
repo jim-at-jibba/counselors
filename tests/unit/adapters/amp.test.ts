@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AmpAdapter,
   computeAmpCost,
+  isAmpDeepMode,
   parseAmpUsage,
 } from '../../../src/adapters/amp.js';
 import type { RunRequest } from '../../../src/types.js';
@@ -154,6 +155,32 @@ describe('AmpAdapter', () => {
       };
       expect(adapter.getEffectiveReadOnlyLevel(toolConfig)).toBe('enforced');
     });
+  });
+});
+
+describe('isAmpDeepMode', () => {
+  it('returns true for ["-m", "deep"]', () => {
+    expect(isAmpDeepMode(['-m', 'deep'])).toBe(true);
+  });
+
+  it('returns false for ["deep"] without -m prefix', () => {
+    expect(isAmpDeepMode(['deep'])).toBe(false);
+  });
+
+  it('returns false for undefined', () => {
+    expect(isAmpDeepMode(undefined)).toBe(false);
+  });
+
+  it('returns false when deep is preceded by something other than -m', () => {
+    expect(isAmpDeepMode(['--something', 'deep'])).toBe(false);
+  });
+
+  it('returns true when -m deep appears after other flags', () => {
+    expect(isAmpDeepMode(['-x', '-m', 'deep'])).toBe(true);
+  });
+
+  it('returns false for empty array', () => {
+    expect(isAmpDeepMode([])).toBe(false);
   });
 });
 

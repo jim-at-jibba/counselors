@@ -5,6 +5,7 @@ import { resolveAdapter } from '../adapters/index.js';
 import type { Config } from '../types.js';
 import type { ProgressEvent } from './dispatcher.js';
 import { execute } from './executor.js';
+import { buildToolReport } from './text-utils.js';
 
 export interface PromptWriterOptions {
   config: Config;
@@ -99,16 +100,7 @@ Output ONLY the prompt text. Do not include any meta-commentary, markdown fences
   onProgress?.({
     toolId,
     event: 'completed',
-    report: {
-      toolId,
-      status: result.exitCode === 0 ? 'success' : 'error',
-      exitCode: result.exitCode,
-      durationMs: result.durationMs,
-      wordCount: result.stdout.split(/\s+/).filter(Boolean).length,
-      outputFile: '',
-      stderrFile: '',
-      error: result.exitCode !== 0 ? result.stderr.slice(0, 500) : undefined,
-    },
+    report: buildToolReport(toolId, result),
   });
 
   if (result.timedOut) {

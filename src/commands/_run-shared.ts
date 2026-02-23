@@ -188,25 +188,23 @@ export async function resolveTools(
  * ReadOnlyLevel values (enforced / bestEffort / none), falling
  * back to the config default when no flag is provided.
  */
+const READ_ONLY_MAP: [cli: string, internal: ReadOnlyLevel][] = [
+  ['strict', 'enforced'],
+  ['best-effort', 'bestEffort'],
+  ['off', 'none'],
+];
+const cliToInternal = new Map(READ_ONLY_MAP.map(([c, i]) => [c, i]));
+const internalToCli = new Map(READ_ONLY_MAP.map(([c, i]) => [i, c]));
+
 export function resolveReadOnlyPolicy(
   readOnlyInput: string | undefined,
   config: Config,
 ): ReadOnlyLevel | null {
-  const internalToCliMap: Record<string, string> = {
-    enforced: 'strict',
-    bestEffort: 'best-effort',
-    none: 'off',
-  };
   const input =
     readOnlyInput ??
-    internalToCliMap[config.defaults.readOnly] ??
+    internalToCli.get(config.defaults.readOnly) ??
     'best-effort';
-  const readOnlyMap: Record<string, ReadOnlyLevel> = {
-    strict: 'enforced',
-    'best-effort': 'bestEffort',
-    off: 'none',
-  };
-  const policy = readOnlyMap[input];
+  const policy = cliToInternal.get(input);
   if (!policy) {
     error(
       `Invalid --read-only value "${input}". Must be: strict, best-effort, or off.`,

@@ -88,8 +88,7 @@ describe('runLoop', () => {
   it('runs the specified number of rounds', async () => {
     const result = await runLoop(baseOptions({ rounds: 2 }));
     expect(result.rounds).toHaveLength(2);
-    expect(result.aborted).toBe(false);
-    expect(result.converged).toBe(false);
+    expect(result.outcome).toBe('completed');
   });
 
   it('calls onRoundStart and onRoundComplete for each round', async () => {
@@ -108,6 +107,18 @@ describe('runLoop', () => {
     expect(completes).toEqual([1, 2]);
   });
 
+  it('sets outcome to aborted when duration limit is reached', async () => {
+    // Each dispatch takes ~0ms in mocks, so set durationMs to 0
+    // to trigger the duration check on round 2+
+    const result = await runLoop(
+      baseOptions({ rounds: 5, durationMs: 0 }),
+    );
+
+    // Only round 1 should complete — the duration check fires before round 2
+    expect(result.rounds).toHaveLength(1);
+    expect(result.outcome).toBe('aborted');
+  });
+
   describe('convergence detection', () => {
     it('stops early when word count ratio drops below threshold', async () => {
       // Round 1: 1000 words, Round 2: 200 words → ratio 0.2 < 0.3
@@ -118,8 +129,7 @@ describe('runLoop', () => {
       );
 
       expect(result.rounds).toHaveLength(2);
-      expect(result.converged).toBe(true);
-      expect(result.aborted).toBe(false);
+      expect(result.outcome).toBe('converged');
     });
 
     it('calls onConvergence callback with round and ratio', async () => {
@@ -152,7 +162,7 @@ describe('runLoop', () => {
       );
 
       expect(result.rounds).toHaveLength(3);
-      expect(result.converged).toBe(false);
+      expect(result.outcome).toBe('completed');
     });
 
     it('respects custom convergence threshold', async () => {
@@ -165,7 +175,7 @@ describe('runLoop', () => {
       );
 
       expect(result.rounds).toHaveLength(2);
-      expect(result.converged).toBe(true);
+      expect(result.outcome).toBe('converged');
     });
 
     it('skips convergence check on first round', async () => {
@@ -190,7 +200,7 @@ describe('runLoop', () => {
       // Should run all 3 rounds — the 0→100 comparison is skipped (prevWords === 0)
       // and 100→50 ratio is 0.5 which is above 0.3
       expect(result.rounds).toHaveLength(3);
-      expect(result.converged).toBe(false);
+      expect(result.outcome).toBe('completed');
     });
   });
 });

@@ -137,6 +137,32 @@ describe('writePrompt', () => {
     expect(events[1].event).toBe('completed');
   });
 
+  it('reports timeout status in progress event when timed out', async () => {
+    mockExecute.mockResolvedValueOnce({
+      exitCode: 1,
+      stdout: '',
+      stderr: '',
+      timedOut: true,
+      durationMs: 60000,
+    });
+
+    const events: { event: string; status?: string }[] = [];
+
+    await writePrompt({
+      config: makeConfig(),
+      toolId: 'claude',
+      cwd: '/tmp/project',
+      userInput: 'test',
+      presetDescription: 'test',
+      repoContext: 'test',
+      onProgress: (e) =>
+        events.push({ event: e.event, status: e.report?.status }),
+    }).catch(() => {});
+
+    const completed = events.find((e) => e.event === 'completed');
+    expect(completed?.status).toBe('timeout');
+  });
+
   it('uses tool-specific timeout when configured', async () => {
     const config = makeConfig({
       claude: {

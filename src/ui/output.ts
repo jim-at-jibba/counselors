@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import ora, { type Ora } from 'ora';
 import type {
   DiscoveryResult,
@@ -5,6 +6,10 @@ import type {
   RunManifest,
   TestResult,
 } from '../types.js';
+
+function clickablePath(p: string): string {
+  return !isAbsolute(p) && !p.startsWith('.') ? `./${p}` : p;
+}
 
 export function createSpinner(text: string): Ora {
   return ora({ text, stream: process.stderr });
@@ -142,7 +147,7 @@ export function formatRunSummary(manifest: RunManifest): string {
 
   lines.push('');
   lines.push(
-    `Reports saved to: ${manifest.tools[0]?.outputFile ? manifest.tools[0].outputFile.replace(/\/[^/]+$/, '/') : 'output dir'}`,
+    `Reports saved to: ${manifest.tools[0]?.outputFile ? clickablePath(manifest.tools[0].outputFile.replace(/\/[^/]+$/, '/')) : 'output dir'}`,
   );
   lines.push('');
   return lines.join('\n');
@@ -171,7 +176,7 @@ function formatMultiRoundSummary(manifest: RunManifest): string {
   lines.push('');
   // Strip filename and round-N dir to show the parent run directory
   lines.push(
-    `Reports saved to: ${manifest.tools[0]?.outputFile ? manifest.tools[0].outputFile.replace(/\/[^/]+\/[^/]+$/, '/') : 'output dir'}`,
+    `Reports saved to: ${manifest.tools[0]?.outputFile ? clickablePath(manifest.tools[0].outputFile.replace(/\/[^/]+\/[^/]+$/, '/')) : 'output dir'}`,
   );
   lines.push('');
   return lines.join('\n');

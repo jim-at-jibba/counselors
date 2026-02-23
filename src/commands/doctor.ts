@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Command } from 'commander';
+import { isAmpDeepMode } from '../adapters/amp.js';
 import { resolveAdapter } from '../adapters/index.js';
 import {
   AMP_DEEP_SETTINGS_FILE,
@@ -102,12 +103,7 @@ export function registerDoctorCommand(program: Command): void {
 
         // Amp deep mode uses Bash (a write-capable tool), so it's bestEffort
         const adapterName = toolConfig.adapter ?? id;
-        const isAmpDeep =
-          adapterName === 'amp' &&
-          toolConfig.extraFlags?.includes('deep') &&
-          toolConfig.extraFlags?.[toolConfig.extraFlags.indexOf('deep') - 1] ===
-            '-m';
-        if (isAmpDeep) {
+        if (adapterName === 'amp' && isAmpDeepMode(toolConfig.extraFlags)) {
           readOnlyLevel = 'bestEffort';
         }
 

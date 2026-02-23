@@ -135,19 +135,18 @@ export async function dispatch(
 
       const report: ToolReport = {
         toolId: id,
-        status: result.timedOut
-          ? 'timeout'
-          : result.exitCode === 0
-            ? 'success'
-            : 'error',
+        // Defaults (overridden by adapter's parseResult)
+        status: 'error',
         exitCode: result.exitCode,
         durationMs: result.durationMs,
-        wordCount: result.stdout.split(/\s+/).filter(Boolean).length,
+        wordCount: 0,
+        // Adapter-authoritative fields
+        ...parsed,
+        // Dispatcher-only fields (never overridden by adapter)
         outputFile,
         stderrFile,
         cost: cost ?? undefined,
         error: result.exitCode !== 0 ? result.stderr.slice(0, 500) : undefined,
-        ...parsed,
       };
 
       onProgress?.({ toolId: id, event: 'completed', report });

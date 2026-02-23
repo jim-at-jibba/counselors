@@ -11,6 +11,12 @@ import type {
 } from '../types.js';
 import { BaseAdapter } from './base.js';
 
+export function isAmpDeepMode(flags?: string[]): boolean {
+  if (!flags) return false;
+  const idx = flags.indexOf('deep');
+  return idx > 0 && flags[idx - 1] === '-m';
+}
+
 export class AmpAdapter extends BaseAdapter {
   id = 'amp';
   displayName = 'Amp CLI';
@@ -32,10 +38,7 @@ export class AmpAdapter extends BaseAdapter {
   ];
 
   getEffectiveReadOnlyLevel(toolConfig: ToolConfig): ReadOnlyLevel {
-    const flags = toolConfig.extraFlags;
-    const isDeep =
-      flags?.includes('deep') && flags[flags.indexOf('deep') - 1] === '-m';
-    return isDeep ? 'bestEffort' : this.readOnly.level;
+    return isAmpDeepMode(toolConfig.extraFlags) ? 'bestEffort' : this.readOnly.level;
   }
 
   buildInvocation(req: RunRequest): Invocation {
@@ -45,9 +48,7 @@ export class AmpAdapter extends BaseAdapter {
       args.push(...req.extraFlags);
     }
 
-    const isDeep =
-      req.extraFlags?.includes('deep') &&
-      req.extraFlags?.[req.extraFlags.indexOf('deep') - 1] === '-m';
+    const isDeep = isAmpDeepMode(req.extraFlags);
 
     const settingsFile = isDeep ? AMP_DEEP_SETTINGS_FILE : AMP_SETTINGS_FILE;
 

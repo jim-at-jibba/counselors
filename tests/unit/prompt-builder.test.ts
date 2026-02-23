@@ -20,48 +20,67 @@ afterEach(() => {
 });
 
 describe('generateSlug', () => {
-  it('converts text to slug', () => {
-    expect(generateSlug('should we use Redis for caching')).toBe(
-      'should-we-use-redis-for-caching',
-    );
+  it('converts text to timestamped slug', () => {
+    const slug = generateSlug('should we use Redis for caching');
+    expect(slug).toMatch(/^\d+-should-we-use-redis-for-caching$/);
+  });
+
+  it('uses seconds-level timestamp', () => {
+    const before = Math.floor(Date.now() / 1000);
+    const slug = generateSlug('test');
+    const after = Math.floor(Date.now() / 1000);
+    const ts = Number(slug.split('-')[0]);
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
   });
 
   it('strips special characters', () => {
-    expect(generateSlug('What are the tradeoffs?')).toBe(
-      'what-are-the-tradeoffs',
-    );
+    const slug = generateSlug('What are the tradeoffs?');
+    expect(slug).toMatch(/^\d+-what-are-the-tradeoffs$/);
   });
 
-  it('truncates to max length', () => {
+  it('truncates slug portion to max length', () => {
     const long =
       'this is a very long prompt that should be truncated to forty characters';
     const slug = generateSlug(long);
-    expect(slug.length).toBeLessThanOrEqual(40);
+    // Slug portion (after timestamp-) should be <= 40 chars
+    const slugPart = slug.replace(/^\d+-/, '');
+    expect(slugPart.length).toBeLessThanOrEqual(40);
   });
 
   it('handles empty string', () => {
-    expect(generateSlug('')).toBe('untitled');
+    const slug = generateSlug('');
+    expect(slug).toMatch(/^\d+-untitled$/);
   });
 
   it('returns "untitled" for non-alphanumeric input', () => {
-    expect(generateSlug('!!!')).toBe('untitled');
-    expect(generateSlug('!@#$%')).toBe('untitled');
+    expect(generateSlug('!!!')).toMatch(/^\d+-untitled$/);
+    expect(generateSlug('!@#$%')).toMatch(/^\d+-untitled$/);
   });
 
   it('collapses multiple hyphens', () => {
-    expect(generateSlug('hello   world---test')).toBe('hello-world-test');
+    const slug = generateSlug('hello   world---test');
+    expect(slug).toMatch(/^\d+-hello-world-test$/);
+  });
+
+  it('does not end with a trailing dash', () => {
+    const slug = generateSlug(
+      'When navigating between tabs, the frames per second drops.',
+    );
+    expect(slug).not.toMatch(/-$/);
+    expect(slug).not.toMatch(/--/);
   });
 });
 
 describe('generateSlugFromFile', () => {
   it('uses parent directory name', () => {
-    expect(generateSlugFromFile('/path/to/redis-review/prompt.md')).toBe(
-      'redis-review',
-    );
+    const slug = generateSlugFromFile('/path/to/redis-review/prompt.md');
+    expect(slug).toMatch(/^\d+-redis-review$/);
   });
 
   it('falls back to filename when parent is dot', () => {
-    expect(generateSlugFromFile('./prompt.md')).toBe('prompt');
+    const slug = generateSlugFromFile('./prompt.md');
+    expect(slug).toMatch(/^\d+-prompt$/);
   });
 });
 

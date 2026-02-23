@@ -27,10 +27,7 @@ export interface LoopOptions {
 
 export interface LoopResult {
   rounds: RoundManifest[];
-  /** True if the loop was stopped early (user SIGINT or duration timeout). */
-  aborted: boolean;
-  /** True if the loop stopped early due to convergence detection. */
-  converged?: boolean;
+  outcome: 'completed' | 'aborted' | 'converged';
 }
 
 /** Sum word counts across all tool reports in a round. */
@@ -60,8 +57,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
 
   const startTime = Date.now();
   const completedRounds: RoundManifest[] = [];
-  let aborted = false;
-  let converged = false;
+  let outcome: LoopResult['outcome'] = 'completed';
 
   // SIGINT: let the current round finish, then stop the loop.
   // Second SIGINT falls through to the executor's handler which force-exits.
@@ -69,7 +65,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
   const sigintHandler = () => {
     sigintCount++;
     if (sigintCount === 1) {
-      aborted = true;
+      outcome = 'aborted';
       // Suppress the executor's auto-exit so we can write manifests
       clearSigintExit();
     }
@@ -80,12 +76,13 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
   try {
     for (let round = 1; round <= maxRounds; round++) {
       // Check stop conditions before starting a new round
-      if (aborted) break;
+      if (outcome === 'aborted') break;
       if (
         durationMs != null &&
         round > 1 &&
         Date.now() - startTime >= durationMs
       ) {
+        outcome = 'aborted';
         break;
       }
 
@@ -160,7 +157,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
         if (prevWords > 0) {
           const ratio = curWords / prevWords;
           if (ratio < convergenceThreshold) {
-            converged = true;
+            outcome = 'converged';
             onConvergence?.(round, ratio);
             break;
           }
@@ -171,7 +168,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
     process.removeListener('SIGINT', sigintHandler);
   }
 
-  return { rounds: completedRounds, aborted, converged };
+  return { rounds: completedRounds, outcome };
 }
 
 /**
