@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Non-TTY heartbeat: emits elapsed time and active PIDs to stderr every 60 seconds, preventing outer-agent timeouts during long-running dispatches
 - `mkdir` can now be run without a prompt to create only an output directory (no `prompt.md`)
 
+### Improved
+- Skill template now warns orchestrating LLMs that dispatch is long-running (10–20+ min) and suggests background execution with progress monitoring
+
 ### Changed
 - Built-in presets are now YAML files with schema validation instead of hardcoded TypeScript
 - Output directory names include a timestamp prefix for uniqueness (e.g. `1740300000-bughunt`)
