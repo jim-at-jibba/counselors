@@ -86,7 +86,7 @@ export function synthesizeFinal(
   outputDir: string,
 ): string {
   const parts: string[] = [
-    '# Final Synthesis',
+    '# Final Notes',
     '',
     `**Rounds completed:** ${rounds.length}`,
     '',

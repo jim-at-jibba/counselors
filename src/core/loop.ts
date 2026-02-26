@@ -92,7 +92,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
 
       onRoundStart?.(round);
 
-      // Output layout: {outputDir}/round-{N}/{tool-id}.md, synthesis.md, prompt.md
+      // Output layout: {outputDir}/round-{N}/{tool-id}.md, round-notes.md, prompt.md
       const roundDir = join(outputDir, `round-${round}`);
       mkdirSync(roundDir, { recursive: true });
 
@@ -147,7 +147,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
         },
         roundDir,
       );
-      safeWriteFile(resolve(roundDir, 'synthesis.md'), roundSynthesis);
+      safeWriteFile(resolve(roundDir, 'round-notes.md'), roundSynthesis);
 
       completedRounds.push(roundManifest);
       onRoundComplete?.(round, roundManifest);
@@ -176,7 +176,7 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
 }
 
 /**
- * Collect all .md output files from prior rounds (excluding synthesis and prompt files).
+ * Collect all .md output files from prior rounds (excluding round notes and prompt files).
  */
 function collectPriorOutputPaths(
   outputDir: string,
@@ -190,7 +190,7 @@ function collectPriorOutputPaths(
         if (
           file.endsWith('.md') &&
           file !== 'prompt.md' &&
-          file !== 'synthesis.md'
+          file !== 'round-notes.md'
         ) {
           paths.push(join(roundDir, file));
         }

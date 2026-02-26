@@ -413,9 +413,9 @@ export function registerLoopCommand(program: Command): void {
         // Flatten all tool reports for the manifest
         const allReports = loopResult.rounds.flatMap((r) => r.tools);
 
-        // Write final synthesis
-        const finalSynthesis = synthesizeFinal(loopResult.rounds, outputDir);
-        safeWriteFile(resolve(outputDir, 'final-synthesis.md'), finalSynthesis);
+        // Write final cross-round notes
+        const finalNotes = synthesizeFinal(loopResult.rounds, outputDir);
+        safeWriteFile(resolve(outputDir, 'final-notes.md'), finalNotes);
 
         // Build manifest
         const manifest: RunManifest = {

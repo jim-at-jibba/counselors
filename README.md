@@ -142,11 +142,11 @@ execution prompt
       v
 +------------------------------- loop rounds -------------------------------+
 | round 1: dispatch to all selected tools in parallel                       |
-|          write per-tool outputs + round synthesis                         |
+|          write per-tool outputs + round notes                             |
 |                                                                           |
 | round N>1: execution prompt + references to prior round outputs           |
 |            (new findings, challenge/refine prior findings)                |
-|            dispatch in parallel, write outputs + synthesis                |
+|            dispatch in parallel, write outputs + notes                    |
 |                                                                           |
 | stop when:                                                                |
 | - max rounds reached, or                                                  |
@@ -156,7 +156,7 @@ execution prompt
 +---------------------------------------------------------------------------+
       |
       v
-final synthesis + run manifest
+final notes + run manifest
 ```
 
 ```text
@@ -421,13 +421,13 @@ For multi-round runs (`loop`), each round gets its own subdirectory:
     prompt.md
     {tool-id}.md
     {tool-id}.stderr
-    synthesis.md
+    round-notes.md
   round-2/
     prompt.md              # augmented with prior round outputs
     {tool-id}.md
-    synthesis.md
+    round-notes.md
   ...
-  final-synthesis.md       # combined synthesis across all rounds
+  final-notes.md           # combined notes across all rounds
   run.json                 # manifest with rounds array
 ```
 
