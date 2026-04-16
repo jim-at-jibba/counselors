@@ -123,7 +123,7 @@ export class CopilotAdapter extends BaseAdapter {
 
   buildInvocation(req: RunRequest): Invocation {
     const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
-    const args = ['--output-format', 'text', '--no-color', '--allow-all-tools'];
+    const args = ['--no-color', '--allow-all-tools'];
 
     if (req.readOnlyPolicy !== 'none') {
       args.push('--deny-tool', 'write', '--deny-tool', 'shell');

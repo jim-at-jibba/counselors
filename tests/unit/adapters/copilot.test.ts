@@ -28,8 +28,6 @@ describe('CopilotAdapter', () => {
     const inv = adapter.buildInvocation(baseRequest);
     expect(inv.cmd).toBe('copilot');
     expect(inv.args).toContain('-p');
-    expect(inv.args).toContain('--output-format');
-    expect(inv.args).toContain('text');
     expect(inv.args).toContain('--no-color');
     expect(inv.args).toContain('--allow-all-tools');
     expect(inv.args).toContain('--deny-tool');
