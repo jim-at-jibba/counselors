@@ -91,6 +91,7 @@ counselors run -t claude,codex "Review src/api/ for security issues and missing 
 | OpenAI Codex | `codex` | enforced | [github](https://github.com/openai/codex) |
 | Gemini CLI | `gemini` | enforced | [github](https://github.com/google-gemini/gemini-cli) |
 | Amp CLI | `amp` | enforced | [ampcode.com](https://ampcode.com) |
+| GitHub Copilot CLI | `copilot` | enforced | [docs](https://github.com/features/copilot/cli) |
 | Custom | user-defined | configurable | — |
 
 ## Commands
