@@ -32,7 +32,7 @@ describe('resolveAdapter', () => {
       readOnly: { level: 'bestEffort' },
     };
 
-    const adapter = resolveAdapter('gemini-3-pro', config);
+    const adapter = resolveAdapter('gemini-3.1-pro', config);
     expect(adapter.id).toBe('gemini');
   });
 
