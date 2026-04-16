@@ -46,6 +46,17 @@ describe('resolveAdapter', () => {
     expect(adapter.id).toBe('claude');
   });
 
+  it('resolves compound copilot ID to CopilotAdapter', () => {
+    const config: ToolConfig = {
+      binary: '/opt/homebrew/bin/copilot',
+      adapter: 'copilot',
+      readOnly: { level: 'enforced' },
+    };
+
+    const adapter = resolveAdapter('copilot-claude-opus-4.6', config);
+    expect(adapter.id).toBe('copilot');
+  });
+
   it('returns CustomAdapter for unknown adapter', () => {
     const config: ToolConfig = {
       binary: '/usr/local/bin/my-tool',
