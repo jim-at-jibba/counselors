@@ -5,6 +5,7 @@ import { CodexAdapter } from './codex.js';
 import { CopilotAdapter } from './copilot.js';
 import { CustomAdapter } from './custom.js';
 import { GeminiAdapter } from './gemini.js';
+import { OpencodeAdapter } from './opencode.js';
 
 const builtInAdapters: Record<string, () => ToolAdapter> = {
   claude: () => new ClaudeAdapter(),
@@ -12,6 +13,7 @@ const builtInAdapters: Record<string, () => ToolAdapter> = {
   gemini: () => new GeminiAdapter(),
   amp: () => new AmpAdapter(),
   copilot: () => new CopilotAdapter(),
+  opencode: () => new OpencodeAdapter(),
 };
 
 export function getAdapter(id: string, config?: ToolConfig): ToolAdapter {

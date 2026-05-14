@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- OpenCode CLI adapter (`opencode run`) with 4 curated models (Claude Opus 4.7, GPT-5.5, OpenCode-hosted GPT-5.4, DeepSeek V4 Flash free). Read-only is enforced via `OPENCODE_CONFIG_CONTENT` env var carrying inline permissions JSON, so deny rules cannot be overridden by user-side `opencode.json`.
+
 ### Changed
 - Standalone release binaries are now built into `release/` instead of `dist/`, decoupling binary artifacts from npm package contents
 - Homebrew formula updates now target platform-specific GitHub release binaries directly (macOS/Linux, arm64/x64) instead of the npm tarball

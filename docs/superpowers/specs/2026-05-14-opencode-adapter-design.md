@@ -86,7 +86,7 @@ export class OpencodeAdapter extends BaseAdapter {
     const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
     const args = ['run'];
     if (req.extraFlags) args.push(...req.extraFlags);
-    args.push('--prompt', instruction);
+    args.push(instruction); // positional message — opencode run's --prompt flag doesn't work standalone
 
     const permission = req.readOnlyPolicy === 'none'
       ? '"allow"'
@@ -114,7 +114,7 @@ Mirror `tests/unit/adapters/copilot.test.ts` plus:
 - `OPENCODE_CONFIG_CONTENT` env present in all three read-only modes.
 - `enforced` and `bestEffort` produce identical permission JSON.
 - `none` produces `{"permission":"allow"}`.
-- `extraFlags` from a model are interleaved before `--prompt`.
+- `extraFlags` from a model are interleaved before positional message.
 - Recommended model is `anthropic/claude-opus-4-7`.
 
 Integration coverage: extend the existing custom-model prompt tests once `selectModelDetails` is fixed.
