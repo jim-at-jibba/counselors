@@ -1,13 +1,16 @@
 import type { Command } from 'commander';
 import { loadConfig, loadProjectConfig, mergeConfigs } from '../core/config.js';
-import { gatherContext } from '../core/context.js';
 import {
   buildPrompt,
   generateSlug,
   resolveOutputDir,
 } from '../core/prompt-builder.js';
 import { info } from '../ui/logger.js';
-import { createOutputDir, resolvePrompt } from './_run-shared.js';
+import {
+  createOutputDir,
+  resolveContext,
+  resolvePrompt,
+} from './_run-shared.js';
 
 export function registerMakeDirCommand(program: Command): void {
   program
@@ -18,7 +21,7 @@ export function registerMakeDirCommand(program: Command): void {
     .option('-f, --file <path>', 'Use a pre-built prompt file (no wrapping)')
     .option(
       '--context <paths>',
-      'Gather context from paths (comma-separated, or "." for git diff)',
+      'Inline context: comma-separated file paths and/or a diff keyword — "." (working tree, else branch), "working", "branch"',
     )
     .option('-o, --output-dir <dir>', 'Base output directory')
     .option(
@@ -56,13 +59,7 @@ export function registerMakeDirCommand(program: Command): void {
 
           const stdinContent = Buffer.concat(chunks).toString('utf-8').trim();
           if (stdinContent) {
-            const context = opts.context
-              ? gatherContext(
-                  cwd,
-                  opts.context === '.' ? [] : opts.context.split(','),
-                  config.defaults.maxContextKb,
-                )
-              : undefined;
+            const context = resolveContext(opts.context, cwd, config);
             prompt = {
               promptContent: buildPrompt(stdinContent, context),
               promptSource: 'stdin' as const,

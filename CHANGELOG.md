@@ -7,14 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-08
+
 ### Added
 - OpenCode CLI adapter (`opencode run`) with 4 curated models (Claude Opus 4.7, GPT-5.5, OpenCode-hosted GPT-5.4, DeepSeek V4 Flash free). Read-only is enforced via `OPENCODE_CONFIG_CONTENT` env var carrying inline permissions JSON, so deny rules cannot be overridden by user-side `opencode.json`.
+- Every dispatched prompt now carries a short environment note stating what the agent's own sandbox permits, so agents stop burning turns on shell calls that will be denied
+- Claude Code adapter now grants `Bash` scoped to read-only git inspection (`git status`, `diff`, `log`, `show`, `blame`) under a read-only policy, so it can inspect changes like Codex already could
+- `readOnly.allowedCommands` in tool config, for adding extra allowed command prefixes when a wrapper or `PreToolUse` hook rewrites the commands an agent issues (e.g. `["rtk git"]`)
+- `capabilities.shell` in tool config, so custom tools can declare what their sandbox actually permits
+- `--context branch` gathers everything the current branch adds over its merge base, and `--context .` now falls back to that branch diff when the working tree is clean — committed-but-unmerged work is no longer invisible to reviewers. `--context working` keeps the old working-tree-only behavior.
 
 ### Changed
+- Context truncation and skipped oversized files are now reported as warnings instead of debug-only messages, so a silently shortened diff is visible
 - Standalone release binaries are now built into `release/` instead of `dist/`, decoupling binary artifacts from npm package contents
 - Homebrew formula updates now target platform-specific GitHub release binaries directly (macOS/Linux, arm64/x64) instead of the npm tarball
 
 ### Fixed
+- The `counselors skill` template no longer tells subagents to run `git diff` themselves. Most agents have no shell under read-only mode, so that instruction was unfollowable; the template now directs the orchestrating agent to pass `--context` instead.
 - npm package publish size is dramatically reduced by excluding standalone compiled binaries from the published `files` list
 - Release smoke tests now include Linux (`ubuntu-latest`) for `npm` and `standalone` install paths to catch Linux-only install/runtime breakages
 - Homebrew checksum resolution now retries when fetching freshly uploaded release asset checksums, reducing transient CDN propagation failures

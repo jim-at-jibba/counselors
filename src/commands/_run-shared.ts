@@ -2,7 +2,7 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { basename, dirname, resolve, sep } from 'node:path';
 import { isBuiltInTool, resolveAdapter } from '../adapters/index.js';
 import { loadConfig, loadProjectConfig, mergeConfigs } from '../core/config.js';
-import { gatherContext } from '../core/context.js';
+import { type DiffMode, gatherContext } from '../core/context.js';
 import { safeWriteFile } from '../core/fs-utils.js';
 import {
   buildPrompt,
@@ -229,6 +229,41 @@ export interface ResolvedPrompt {
   slug: string;
 }
 
+/** Reserved `--context` values that select which diff to gather. */
+const DIFF_KEYWORDS: Record<string, DiffMode> = {
+  '.': 'auto',
+  branch: 'branch',
+  working: 'working',
+};
+
+/**
+ * Split `--context` into a diff mode plus explicit file paths, then gather.
+ * Returns undefined when there was nothing to gather.
+ */
+export function resolveContext(
+  contextArg: string | undefined,
+  cwd: string,
+  config: Config,
+): string | undefined {
+  if (!contextArg) return undefined;
+
+  let diffMode: DiffMode = 'auto';
+  const paths: string[] = [];
+  for (const entry of contextArg
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    const keyword = DIFF_KEYWORDS[entry];
+    if (keyword) diffMode = keyword;
+    else paths.push(entry);
+  }
+
+  return (
+    gatherContext(cwd, paths, config.defaults.maxContextKb, diffMode) ||
+    undefined
+  );
+}
+
 export async function resolvePrompt(
   promptArg: string | undefined,
   opts: PromptOpts,
@@ -245,14 +280,8 @@ export async function resolvePrompt(
       process.exitCode = 1;
       return null;
     }
-    if (opts.context) {
-      const context = gatherContext(
-        cwd,
-        opts.context === '.' ? [] : opts.context.split(','),
-        config.defaults.maxContextKb,
-      );
-      if (context) promptContent = `${promptContent}\n\n${context}`;
-    }
+    const context = resolveContext(opts.context, cwd, config);
+    if (context) promptContent = `${promptContent}\n\n${context}`;
     return {
       promptContent,
       promptSource: 'file',
@@ -261,13 +290,7 @@ export async function resolvePrompt(
   }
 
   if (promptArg) {
-    const context = opts.context
-      ? gatherContext(
-          cwd,
-          opts.context === '.' ? [] : opts.context.split(','),
-          config.defaults.maxContextKb,
-        )
-      : undefined;
+    const context = resolveContext(opts.context, cwd, config);
     return {
       promptContent: buildPrompt(promptArg, context),
       promptSource: 'inline',
@@ -295,13 +318,7 @@ export async function resolvePrompt(
     return null;
   }
 
-  const context = opts.context
-    ? gatherContext(
-        cwd,
-        opts.context === '.' ? [] : opts.context.split(','),
-        config.defaults.maxContextKb,
-      )
-    : undefined;
+  const context = resolveContext(opts.context, cwd, config);
 
   const enrichStdinPrompt = opts.enrichStdinPrompt ?? true;
   return {
@@ -377,6 +394,7 @@ export function buildDryRunInvocations(
       cwd,
       binary: toolConfig.binary,
       extraFlags: toolConfig.extraFlags,
+      allowedCommands: toolConfig.readOnly.allowedCommands,
     });
     return {
       toolId: id,

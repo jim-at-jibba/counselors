@@ -35,7 +35,9 @@ Parse \`$ARGUMENTS\` to understand what the user wants reviewed. Then identify r
 2. **Recent changes**: Run \`git diff HEAD\` and \`git diff --staged\` to identify what changed
 3. **Related code**: Search for key terms from the prompt to identify the most relevant files (up to 5 files)
 
-**Important**: You do NOT need to read and inline every file. Subagents have access to the filesystem and git — they can read files and run git commands themselves. Your job is to *identify* the relevant files and reference them, not to copy their contents into the prompt. See Phase 4 for how to use \`@file\` references.
+**Important**: You do NOT need to read and inline every file. Every subagent can read files from disk, so your job is to *identify* the relevant files and reference them with \`@file\`, not to copy their contents into the prompt. See Phase 4.
+
+**But do not assume subagents can run git.** Most agents are sandboxed to read-only mode, and for several of them read-only means *no shell at all* — they cannot run \`git diff\`, \`git log\`, or anything else. Only Codex and Claude Code have working git access under the sandbox. If the review depends on a diff, pass \`--context\` at dispatch (Phase 5) so counselors inlines the diff into the prompt for everyone. Counselors tells each agent what its own sandbox permits, so you do not need to write those caveats yourself.
 
 ---
 
@@ -102,7 +104,9 @@ For preset loop mode and inline loop mode, skip this phase — counselors handle
 
 **Note:** Counselors automatically appends execution boilerplate (general guidelines about focusing on source dirs, skipping vendor/binary files, providing file paths for findings) to every prompt before dispatch. You do not need to include these instructions yourself.
 
-   **Subagents can read files and use git.** You do NOT need to inline file contents or diff output into the prompt. Instead, use \`@path/to/file\` references to point subagents at the relevant files. They will read the files themselves. This keeps the prompt concise and avoids bloating it with copied code.
+   **Subagents can read files.** You do NOT need to inline file contents into the prompt. Use \`@path/to/file\` references to point subagents at the relevant files and they will read them themselves. This keeps the prompt concise and avoids bloating it with copied code.
+
+   **Subagents mostly cannot run git.** Do not write "run \`git diff\` yourself" into the prompt — for most agents that instruction is impossible to follow. Use \`--context\` at dispatch instead (Phase 5); counselors inlines the diff for every agent.
 
    Only inline small, critical snippets if they're essential for framing the question (e.g. a specific function signature or error message). For everything else, use \`@file\` references.
 
@@ -119,7 +123,7 @@ For preset loop mode and inline loop mode, skip this phase — counselors handle
 [e.g. @src/core/executor.ts, @src/adapters/claude.ts]
 
 ### Recent Changes
-[Brief description of what changed. If a diff is relevant, tell the agent to run \`git diff HEAD\` themselves, or inline only a small critical snippet]
+[Brief description of what changed, in prose. Do NOT tell the agent to run git — pass \`--context\` at dispatch and counselors will inline the actual diff here for you]
 
 ### Related Code
 [@path/to/file references for related files discovered via search]
@@ -140,6 +144,21 @@ You are providing an independent review. Be critical and thorough.
 
 Dispatch based on the selected mode.
 
+### Inlining the diff: \`--context\`
+
+Whenever the review is about *changes* rather than about code in general, add \`--context\` so counselors reads the diff itself and inlines it into the prompt. This is the only way agents without shell access can see a diff.
+
+| Value | What gets inlined |
+|-------|-------------------|
+| \`--context .\` | Working-tree changes (staged + unstaged); falls back to the branch diff when the tree is clean |
+| \`--context working\` | Working-tree changes only |
+| \`--context branch\` | Everything this branch adds over its merge base — use for committed-but-unmerged work |
+| \`--context src/a.ts,src/b.ts\` | Those files in full, plus the default diff |
+
+\`--context .\` is the right default for "review my changes". Reach for \`branch\` explicitly when the user is asking about a PR or a feature branch whose work is already committed.
+
+If the diff is larger than the \`maxContextKb\` budget (50KB by default) counselors truncates it and prints a warning — narrow the scope or raise \`defaults.maxContextKb\` in config.
+
 ### Mode A: \`run\` (single-shot)
 
 First, create the output directory + \`prompt.md\` via counselors itself by piping your assembled prompt content:
@@ -153,13 +172,16 @@ PROMPT
 Parse the JSON output and read \`promptFilePath\`, then dispatch with that path:
 
 \`\`\`bash
-counselors run -f <promptFilePath> --tools [comma-separated-tool-ids] --json
+counselors run -f <promptFilePath> --tools [comma-separated-tool-ids] --context . --json
 \`\`\`
 
 Examples:
 - \`--tools claude,codex,gemini\`
 - \`--group smart\` (uses the configured group)
 - \`--group smart --tools codex\` (group plus explicit tools)
+- \`--context branch\` (review committed work on this branch)
+
+Drop \`--context\` only when the review genuinely isn't about changes (e.g. "review this architecture doc").
 
 ### Mode B: \`loop\` + custom prompt file (iterative, no preset)
 
@@ -291,6 +313,7 @@ After presenting the synthesis, ask the user what they'd like to address. Offer 
 - **No tools configured**: Tell the user to run \`counselors init\` or \`counselors tools add <tool>\`
 - **Agent fails**: Note it in the synthesis and continue with other agents' results
 - **All agents fail**: Report errors from stderr files and suggest checking \`counselors doctor\`
+- **An agent reports it could not run git or read the diff**: it was sandboxed without shell access and the prompt did not carry a diff. Re-dispatch with \`--context .\` (or \`--context branch\`) rather than telling the agent to try again
 `;
 
       info(template);

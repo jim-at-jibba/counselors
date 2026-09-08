@@ -1,5 +1,5 @@
-import { sanitizePath } from '../constants.js';
-import type { Invocation, RunRequest } from '../types.js';
+import type { ToolCapabilities } from '../core/capabilities.js';
+import type { Invocation, ReadOnlyLevel, RunRequest } from '../types.js';
 import { BaseAdapter } from './base.js';
 
 export class CodexAdapter extends BaseAdapter {
@@ -35,8 +35,14 @@ export class CodexAdapter extends BaseAdapter {
     },
   ];
 
+  // `--sandbox read-only` restricts writes at the filesystem layer, not which
+  // commands may run, so the agent keeps a working shell either way.
+  capabilities(_readOnlyPolicy: ReadOnlyLevel): ToolCapabilities {
+    return { shell: 'full' };
+  }
+
   buildInvocation(req: RunRequest): Invocation {
-    const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
+    const instruction = this.fileInstruction(req);
     const args = ['exec'];
 
     if (req.readOnlyPolicy !== 'none') {

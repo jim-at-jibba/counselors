@@ -114,7 +114,7 @@ counselors run -t opus,opus,opus "Review this"  # Run the same tool multiple tim
 | `-f, --file <path>` | Use a prompt file (no wrapping) |
 | `-t, --tools <tools>` | Comma-separated tool IDs |
 | `-g, --group <groups>` | Comma-separated group name(s) (expands to tool IDs) |
-| `--context <paths>` | Gather context from paths (comma-separated, or `.` for git diff) |
+| `--context <paths>` | Inline file paths (comma-separated) and/or a diff keyword: `.` (working tree, else branch), `working`, `branch`. See [What the sandbox costs you](#what-the-sandbox-costs-you) |
 | `--read-only <level>` | `strict`, `best-effort`, `off` (defaults to config `readOnly`) |
 | `--dry-run` | Show what would run without executing |
 | `--json` | Output manifest as JSON |
@@ -399,6 +399,63 @@ Place a `.counselors.json` in your project root to override `defaults` per-proje
 | `none` | Tool has full read/write access |
 
 The `--read-only` flag on `run` controls the policy: `strict` only dispatches to tools with `enforced` support, `best-effort` uses whatever each tool supports, `off` disables read-only flags entirely. When omitted, falls back to the `readOnly` setting in your config defaults (which defaults to `bestEffort`).
+
+### What the sandbox costs you
+
+Read-only sandboxing is implemented with each CLI's own permission flags, and those flags differ in how much shell they leave behind. For most tools, read-only means *no shell at all* — the agent cannot run `git diff` to see what changed.
+
+| Tool | Shell under read-only | Can run `git diff` |
+|------|----------------------|--------------------|
+| OpenAI Codex | full (`--sandbox read-only` blocks writes, not commands) | yes |
+| Claude Code | scoped to `git status`/`diff`/`log`/`show`/`blame` | yes |
+| Gemini CLI | none | no |
+| Amp CLI | none | no |
+| GitHub Copilot CLI | none | no |
+| OpenCode | none | no |
+
+Counselors appends a short environment note to every dispatched prompt telling that agent exactly what its own sandbox permits, so agents don't waste turns on calls that will be denied.
+
+**The practical consequence: if your review is about changes, pass `--context`** so counselors reads the diff itself and inlines it for every agent.
+
+```bash
+counselors run "review my changes" --context .        # working tree, else branch diff
+counselors run "review this PR" --context branch      # committed work vs merge base
+counselors run "review this" --context working        # working tree only
+counselors run "review this" --context src/auth.ts    # named files plus the default diff
+```
+
+Diffs larger than `defaults.maxContextKb` (50KB) are truncated with a warning.
+
+Claude Code's git access works by matching the command against an allow-rule. If something in your environment rewrites the commands the agent issues — a wrapper binary, or a `PreToolUse` hook that prefixes them — the rewritten command no longer matches and gets denied. Add the rewritten prefix to `readOnly.allowedCommands`:
+
+```jsonc
+{
+  "tools": {
+    "claude-opus": {
+      "binary": "/usr/local/bin/claude",
+      "adapter": "claude",
+      "readOnly": {
+        "level": "enforced",
+        "allowedCommands": ["rtk git"]  // your wrapper's prefix
+      }
+    }
+  }
+}
+```
+
+Custom tools can declare their own capabilities so counselors describes them accurately:
+
+```jsonc
+{
+  "tools": {
+    "my-tool": {
+      "binary": "/usr/local/bin/my-tool",
+      "readOnly": { "level": "enforced", "flags": ["--safe"] },
+      "capabilities": { "shell": "readOnlyGit" }  // "none" | "readOnlyGit" | "full"
+    }
+  }
+}
+```
 
 ## Output structure
 

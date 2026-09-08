@@ -62,6 +62,47 @@ describe('ClaudeAdapter', () => {
     expect(lastArg).not.toContain('\n');
   });
 
+  it('grants Bash scoped to read-only git commands', () => {
+    const inv = adapter.buildInvocation(baseRequest);
+    const tools = inv.args[inv.args.indexOf('--tools') + 1]!;
+    const allowed = inv.args[inv.args.indexOf('--allowedTools') + 1]!;
+
+    expect(tools.split(',')).toContain('Bash');
+    expect(allowed).toContain('Bash(git diff:*)');
+    expect(allowed).toContain('Bash(git log:*)');
+    expect(allowed).toContain('Bash(git status:*)');
+    // Unscoped Bash would allow arbitrary commands through the sandbox.
+    expect(allowed.split(',')).not.toContain('Bash');
+  });
+
+  it('allows extra command prefixes from tool config', () => {
+    const req = { ...baseRequest, allowedCommands: ['rtk git', 'hg status'] };
+    const inv = adapter.buildInvocation(req);
+    const allowed = inv.args[inv.args.indexOf('--allowedTools') + 1]!;
+
+    expect(allowed).toContain('Bash(rtk git:*)');
+    expect(allowed).toContain('Bash(hg status:*)');
+    // The built-in git rules survive alongside them.
+    expect(allowed).toContain('Bash(git diff:*)');
+  });
+
+  it('reports read-only git shell access under a read-only policy', () => {
+    expect(adapter.capabilities('enforced').shell).toBe('readOnlyGit');
+    expect(adapter.capabilities('none').shell).toBe('full');
+  });
+
+  it('tells the agent which shell commands it may actually run', () => {
+    const instruction = adapter.buildInvocation(baseRequest).args.at(-1)!;
+    expect(instruction).toContain('restricted to read-only git inspection');
+    expect(instruction).toContain('git diff');
+  });
+
+  it('omits the environment note when the sandbox is off', () => {
+    const req = { ...baseRequest, readOnlyPolicy: 'none' as const };
+    const instruction = adapter.buildInvocation(req).args.at(-1)!;
+    expect(instruction).not.toContain('ENVIRONMENT:');
+  });
+
   it('uses req.binary when provided', () => {
     const req = { ...baseRequest, binary: '/home/user/.volta/bin/claude' };
     const inv = adapter.buildInvocation(req);

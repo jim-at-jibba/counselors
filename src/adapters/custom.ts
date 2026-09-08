@@ -1,4 +1,4 @@
-import { sanitizePath } from '../constants.js';
+import type { ToolCapabilities } from '../core/capabilities.js';
 import type {
   Invocation,
   ReadOnlyLevel,
@@ -26,6 +26,15 @@ export class CustomAdapter extends BaseAdapter {
     this.config = config;
   }
 
+  /**
+   * Custom tools carry arbitrary user-supplied flags, so counselors cannot infer
+   * what the sandbox permits. Stay silent unless the user declares it in config —
+   * a wrong environment note is worse than none.
+   */
+  capabilities(_readOnlyPolicy: ReadOnlyLevel): ToolCapabilities {
+    return this.config.capabilities ?? { shell: 'full' };
+  }
+
   buildInvocation(req: RunRequest): Invocation {
     const args: string[] = [];
 
@@ -41,11 +50,15 @@ export class CustomAdapter extends BaseAdapter {
     const cmd = req.binary ?? this.config.binary;
 
     if (this.config.stdin === true) {
-      return { cmd, args, stdin: req.prompt, cwd: req.cwd };
+      return {
+        cmd,
+        args,
+        stdin: this.appendCapabilityNote(req.prompt, req),
+        cwd: req.cwd,
+      };
     }
 
-    const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
-    args.push(instruction);
+    args.push(this.fileInstruction(req));
 
     return { cmd, args, cwd: req.cwd };
   }

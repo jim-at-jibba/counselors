@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ToolCapabilities } from './core/capabilities.js';
 
 // ── Read-only levels ──
 
@@ -12,11 +13,22 @@ export const ToolConfigSchema = z.object({
   readOnly: z.object({
     level: z.enum(['enforced', 'bestEffort', 'none']),
     flags: z.array(z.string()).optional(),
+    /** Extra bare command prefixes to allow through the sandbox, e.g. ["rtk git"].
+     *  Needed when a wrapper or PreToolUse hook rewrites the commands the agent
+     *  issues, so the built-in git rules no longer match. */
+    allowedCommands: z.array(z.string()).optional(),
   }),
   extraFlags: z.array(z.string()).optional(),
   timeout: z.number().optional(),
   stdin: z.boolean().optional(),
   custom: z.boolean().optional(),
+  /** What the tool can actually do under its read-only flags. Custom tools only —
+   *  built-in adapters know their own sandboxes. Omit to send no environment note. */
+  capabilities: z
+    .object({
+      shell: z.enum(['none', 'readOnlyGit', 'full']),
+    })
+    .optional(),
 });
 
 export type ToolConfig = z.infer<typeof ToolConfigSchema>;
@@ -52,6 +64,8 @@ export interface RunRequest {
   cwd: string;
   binary?: string;
   extraFlags?: string[];
+  /** Extra bare command prefixes the sandbox should allow, from tool config. */
+  allowedCommands?: string[];
 }
 
 export interface Invocation {
@@ -113,6 +127,8 @@ export interface ToolAdapter {
   /** Return the effective read-only level for a specific tool configuration.
    *  Adapters override this when certain models have weaker enforcement. */
   getEffectiveReadOnlyLevel?(toolConfig: ToolConfig): ReadOnlyLevel;
+  /** What the agent can actually do under this adapter's sandbox flags. */
+  capabilities?(readOnlyPolicy: ReadOnlyLevel): ToolCapabilities;
 }
 
 // ── Discovery ──

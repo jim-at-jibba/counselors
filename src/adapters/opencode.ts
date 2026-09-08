@@ -1,4 +1,3 @@
-import { sanitizePath } from '../constants.js';
 import type { Invocation, RunRequest } from '../types.js';
 import { BaseAdapter } from './base.js';
 
@@ -42,7 +41,7 @@ export class OpencodeAdapter extends BaseAdapter {
   ];
 
   buildInvocation(req: RunRequest): Invocation {
-    const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
+    const instruction = this.fileInstruction(req);
     const args = ['run'];
 
     if (req.extraFlags) {

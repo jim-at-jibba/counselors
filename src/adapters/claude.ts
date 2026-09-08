@@ -1,6 +1,14 @@
-import { sanitizePath } from '../constants.js';
-import type { Invocation, RunRequest } from '../types.js';
+import {
+  READ_ONLY_GIT_COMMANDS,
+  type ToolCapabilities,
+} from '../core/capabilities.js';
+import type { Invocation, ReadOnlyLevel, RunRequest } from '../types.js';
 import { BaseAdapter } from './base.js';
+
+const READ_ONLY_TOOLS = ['Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch'];
+
+/** Prefix-scoped Bash rule, e.g. `Bash(git diff:*)`. */
+const bashRule = (command: string) => `Bash(${command}:*)`;
 
 export class ClaudeAdapter extends BaseAdapter {
   id = 'claude';
@@ -28,8 +36,12 @@ export class ClaudeAdapter extends BaseAdapter {
     },
   ];
 
+  capabilities(readOnlyPolicy: ReadOnlyLevel): ToolCapabilities {
+    return { shell: readOnlyPolicy === 'none' ? 'full' : 'readOnlyGit' };
+  }
+
   buildInvocation(req: RunRequest): Invocation {
-    const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
+    const instruction = this.fileInstruction(req);
     const args = ['-p', '--output-format', 'text'];
 
     if (req.extraFlags) {
@@ -37,11 +49,18 @@ export class ClaudeAdapter extends BaseAdapter {
     }
 
     if (req.readOnlyPolicy !== 'none') {
+      // Bash is available but every invocation must match a git rule below;
+      // anything else falls through to the permission prompt, which denies
+      // under -p. Without this, reviewing a diff is impossible for the agent.
+      const commands = [
+        ...READ_ONLY_GIT_COMMANDS,
+        ...(req.allowedCommands ?? []),
+      ];
       args.push(
         '--tools',
-        'Read,Glob,Grep,WebFetch,WebSearch',
+        [...READ_ONLY_TOOLS, 'Bash'].join(','),
         '--allowedTools',
-        'Read,Glob,Grep,WebFetch,WebSearch',
+        [...READ_ONLY_TOOLS, ...commands.map(bashRule)].join(','),
         '--strict-mcp-config',
       );
     }

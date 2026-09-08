@@ -49,7 +49,7 @@ export function registerLoopCommand(program: Command): void {
     )
     .option(
       '--context <paths>',
-      'Gather context from paths (comma-separated, or "." for git diff)',
+      'Inline context: comma-separated file paths and/or a diff keyword — "." (working tree, else branch), "working", "branch"',
     )
     .option('--read-only <level>', 'Read-only policy: strict, best-effort, off')
     .option('--rounds <N>', 'Number of dispatch rounds', '3')

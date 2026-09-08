@@ -64,10 +64,12 @@ export class AmpAdapter extends BaseAdapter {
       ? '\n\nMANDATORY: Do not change any files. You are in read-only mode.'
       : '';
 
-    const stdinContent =
+    const stdinContent = this.appendCapabilityNote(
       req.prompt +
-      deepSafetyPrompt +
-      '\n\nUse the oracle tool to provide deeper reasoning and analysis on the most complex or critical aspects of this review.';
+        deepSafetyPrompt +
+        '\n\nUse the oracle tool to provide deeper reasoning and analysis on the most complex or critical aspects of this review.',
+      req,
+    );
 
     return {
       cmd: req.binary ?? 'amp',

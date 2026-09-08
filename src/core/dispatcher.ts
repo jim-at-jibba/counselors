@@ -98,6 +98,7 @@ export async function dispatch(
         cwd,
         binary: toolConfig.binary,
         extraFlags: toolConfig.extraFlags,
+        allowedCommands: toolConfig.readOnly.allowedCommands,
       };
 
       const invocation = adapter.buildInvocation(req);

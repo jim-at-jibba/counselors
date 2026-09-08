@@ -1,4 +1,3 @@
-import { sanitizePath } from '../constants.js';
 import type { Invocation, RunRequest } from '../types.js';
 import { BaseAdapter } from './base.js';
 
@@ -122,7 +121,7 @@ export class CopilotAdapter extends BaseAdapter {
   ];
 
   buildInvocation(req: RunRequest): Invocation {
-    const instruction = `Read the file at ${sanitizePath(req.promptFilePath)} and follow the instructions within it.`;
+    const instruction = this.fileInstruction(req);
     const args = ['--no-color', '--allow-all-tools'];
 
     if (req.readOnlyPolicy !== 'none') {
